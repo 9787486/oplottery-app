@@ -1146,11 +1146,7 @@ document.getElementById('clear-history-btn').addEventListener('click',function()
 ═══════════════════════════════════════ */
 
 /* ── localStorage 캐시 키 ── */
-const LOTTO_DRW_CACHE   = 'lotto_draws_cache_v1';
-const PENSION_DRW_CACHE = 'pension_draws_cache_v1';
-
-function loadDrwCache(key){try{return JSON.parse(localStorage.getItem(key)||'{}')}catch{return{}}}
-function saveDrwCache(key,data){try{localStorage.setItem(key,JSON.stringify(data))}catch(e){console.warn('캐시 저장 실패',e)}}
+/* 캐시 키/함수는 아래 JSON 로더에서 정의 */
 
 /* ── 최신 회차 계산 ── */
 const LOTTO_REF_DRAW   = 1223;
@@ -1172,132 +1168,130 @@ function calcLatestPensionDrwNo(){
 }
 
 /* ── 단건 fetch (CORS 프록시 이중화) ── */
-/* ── 타임아웃 헬퍼 (iOS 호환) ── */
-function fetchWithTimeout(url, ms=7000){
-  const ctrl=new AbortController();
-  const tid=setTimeout(()=>ctrl.abort(),ms);
-  return fetch(url,{signal:ctrl.signal}).finally(()=>clearTimeout(tid));
+/* ═══ GitHub Actions 연동 JSON 데이터 로더 ═══
+   data/lotto.json, data/pension.json 을 읽어
+   localStorage 에 캐싱 → 통계에 반영
+   데이터는 GitHub Actions 가 매주 자동 갱신
+════════════════════════════════════════ */
+
+const JSON_LOTTO   = './data/lotto.json';
+const JSON_PENSION = './data/pension.json';
+const LS_LOTTO_KEY   = 'lotto_draws_cache_v1';
+const LS_PENSION_KEY = 'pension_draws_cache_v1';
+const LS_LOTTO_META   = 'lotto_meta_v1';
+const LS_PENSION_META = 'pension_meta_v1';
+
+function loadDrwCache(key){ try{return JSON.parse(localStorage.getItem(key)||'{}')}catch{return{}} }
+function saveDrwCache(key,data){ try{localStorage.setItem(key,JSON.stringify(data))}catch(e){console.warn('캐시 저장 실패',e)} }
+
+/* JSON 파일 fetch → localStorage 캐시 업데이트 */
+async function refreshFromJson(type){
+  const url   = type==='lotto'?JSON_LOTTO:JSON_PENSION;
+  const cKey  = type==='lotto'?LS_LOTTO_KEY:LS_PENSION_KEY;
+  const mKey  = type==='lotto'?LS_LOTTO_META:LS_PENSION_META;
+  try{
+    const r=await fetch(url+'?t='+Date.now());
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const json=await r.json();
+    const draws=json.draws||{};
+    saveDrwCache(cKey, draws);
+    localStorage.setItem(mKey, JSON.stringify({
+      updated: json.updated||'',
+      total:   json.total||Object.keys(draws).length,
+      latestDrw: json.latest_drw||0
+    }));
+    return{ok:true, total:Object.keys(draws).length, updated:json.updated||''};
+  }catch(e){
+    console.warn(type+' JSON 로드 실패:', e);
+    return{ok:false};
+  }
 }
 
-/* ── 단건 fetch (CORS 프록시 3중화) ── */
-async function fetchSingle(drwNo, type='lotto'){
-  const method=type==='lotto'?'getLottoNumber':'getPension720Number';
-  const api=`https://www.dhlottery.co.kr/common.do?method=${method}&drwNo=${drwNo}`;
-  const proxies=[
-    `https://corsproxy.io/?url=${encodeURIComponent(api)}`,
-    `https://api.allorigins.win/get?url=${encodeURIComponent(api)}`,
-    `https://thingproxy.freeboard.io/fetch/${api}`,
-  ];
-  for(const url of proxies){
-    try{
-      const res=await fetchWithTimeout(url,7000);
-      if(!res.ok) continue;
-      const text=await res.text();
-      if(!text||text.trim()==='') continue;
-      let d;
-      try{
-        const p=JSON.parse(text);
-        // allorigins wraps in {contents:'{...}'}
-        d=p.contents?JSON.parse(p.contents):p;
-      }catch{continue}
-      if(!d||typeof d!=='object') continue;
-      if(d.returnValue==='success') return d;
-    }catch(e){
-      if(e.name==='AbortError') continue; // 타임아웃
-      continue;
+function getMeta(type){
+  const mKey=type==='lotto'?LS_LOTTO_META:LS_PENSION_META;
+  try{return JSON.parse(localStorage.getItem(mKey)||'{}')}catch{return{}}
+}
+
+/* 자동 업데이트 카드 (JSON 파일 기반) */
+function renderAutoUpdateCard(el, type){
+  const cKey   = type==='lotto'?LS_LOTTO_KEY:LS_PENSION_KEY;
+  const cache  = loadDrwCache(cKey);
+  const meta   = getMeta(type);
+  const cnt    = Object.keys(cache).length;
+  const label  = type==='lotto'?'로또':'연금복권';
+  const nextTxt= type==='lotto'?'매주 토요일 21:00 자동 갱신':'매주 목요일 19:30 자동 갱신';
+
+  const card=document.createElement('div');
+  card.style.cssText='background:linear-gradient(135deg,rgba(6,182,212,.06),var(--card));border:1px solid rgba(6,182,212,.25);border-radius:14px;padding:14px 15px;margin-bottom:13px';
+
+  const titleRow=document.createElement('div');
+  titleRow.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:6px';
+  const titleEl=document.createElement('div');
+  titleEl.style.cssText='font-size:12px;font-weight:900;color:var(--c-stats)';
+  titleEl.textContent=`📊 ${label} 역대 당첨번호 통계`;
+  const infoEl=document.createElement('div');
+  infoEl.style.cssText='font-size:10px;color:var(--sub)';
+  infoEl.textContent=cnt>0?`${cnt}회차 반영 · ${meta.updated||''}`:nextTxt;
+  titleRow.appendChild(titleEl);titleRow.appendChild(infoEl);
+  card.appendChild(titleRow);
+
+  const statusEl=document.createElement('div');
+  statusEl.className=`fetch-status ${cnt>0?'success':'idle'}`;
+  statusEl.innerHTML=cnt>0
+    ?`<span>✅</span><span>${cnt}회차 데이터 반영 완료 · GitHub Actions 자동 갱신</span>`
+    :`<span>📡</span><span>데이터 파일 로딩 중...</span>`;
+  card.appendChild(statusEl);
+
+  const btn=document.createElement('button');
+  btn.style.cssText='width:100%;margin-top:9px;padding:10px;border-radius:9px;background:var(--c-stats);border:none;color:#0f172a;font-size:12px;font-weight:900;cursor:pointer;font-family:inherit';
+  btn.textContent='🔄 최신 데이터 새로고침';
+  btn.addEventListener('click',async()=>{
+    btn.disabled=true;btn.textContent='⏳ 로딩 중...';
+    statusEl.className='fetch-status loading';
+    statusEl.innerHTML='<span class="fetch-spin">⏳</span><span>JSON 데이터 다운로드 중...</span>';
+    const res=await refreshFromJson(type);
+    if(res.ok){
+      statusEl.className='fetch-status success';
+      statusEl.innerHTML=`<span>✅</span><span>${res.total}회차 반영 완료 (${res.updated})</span>`;
+      infoEl.textContent=`${res.total}회차 반영 · ${res.updated}`;
+    }else{
+      statusEl.className='fetch-status error';
+      statusEl.innerHTML='<span>❌</span><span>로드 실패 — GitHub Actions 데이터 파일을 확인하세요</span>';
     }
+    btn.disabled=false;btn.textContent='🔄 최신 데이터 새로고침';
+    renderStats();
+  });
+  card.appendChild(btn);
+
+  const note=document.createElement('div');
+  note.style.cssText='font-size:10px;color:var(--sub);margin-top:8px;line-height:1.6';
+  note.innerHTML=`⚙️ <strong>자동 갱신</strong>: GitHub Actions가 ${nextTxt}<br>📁 데이터 위치: <code>data/${type==='lotto'?'lotto':'pension'}.json</code>`;
+  card.appendChild(note);
+  el.appendChild(card);
+
+  // 앱 시작 시 JSON 자동 로드
+  if(cnt===0){
+    setTimeout(async()=>{
+      const res=await refreshFromJson(type);
+      if(res.ok){
+        statusEl.className='fetch-status success';
+        statusEl.innerHTML=`<span>✅</span><span>${res.total}회차 반영 완료 (${res.updated})</span>`;
+        infoEl.textContent=`${res.total}회차 반영 · ${res.updated}`;
+        renderStats();
+      }
+    },500);
   }
-  return null;
 }
 
-/* ── 전체 회차 일괄 수집 ── */
-let _isFetching={lotto:false,pension:false};
-
-async function fetchAllDraws(type, statusEl){
-  if(_isFetching[type]) return;
-  _isFetching[type]=true;
-
-  const cacheKey   = type==='lotto'?LOTTO_DRW_CACHE:PENSION_DRW_CACHE;
-  const latestDrw  = type==='lotto'?calcLatestDrwNo():calcLatestPensionDrwNo();
-  const cache      = loadDrwCache(cacheKey);
-
-  const missing=[];
-  for(let i=1;i<=latestDrw;i++){
-    if(!cache[String(i)]) missing.push(i);
-  }
-
-  const setStatus=(cls,icon,msg)=>{
-    if(!statusEl) return;
-    statusEl.className=`fetch-status ${cls}`;
-    statusEl.innerHTML=`<span>${icon}</span><span>${msg}</span>`;
-  };
-
-  if(missing.length===0){
-    setStatus('success','✅',`전체 ${latestDrw}회차 수집 완료`);
-    _isFetching[type]=false;
-    return;
-  }
-
-  setStatus('loading','<span class="fetch-spin">⏳</span>',
-    `데이터 수집 시작... (${Object.keys(cache).length}/${latestDrw}회차 보유)`);
-
-  const CONCURRENT = 8; // 동시 요청 수
-  let fetched=0, errors=0;
-
-  for(let i=0;i<missing.length;i+=CONCURRENT){
-    const batch=missing.slice(i,i+CONCURRENT);
-    const results=await Promise.allSettled(batch.map(n=>fetchSingle(n,type)));
-
-    results.forEach((r,j)=>{
-      const drwNo=String(batch[j]);
-      if(r.status==='fulfilled'&&r.value){
-        const d=r.value;
-        if(type==='lotto'){
-          cache[drwNo]={
-            nums:[d.drwtNo1,d.drwtNo2,d.drwtNo3,d.drwtNo4,d.drwtNo5,d.drwtNo6].map(Number),
-            bonus:Number(d.bnusNo)
-          };
-        }else{
-          const jo=Number(d.pnsWinNm1||d.wnPnsWinNm||1);
-          const nums=[1,2,3,4,5,6].map(k=>Number(d[`pnsWin1Num${k}`]??d[`wnPns1Num${k}`]??0));
-          cache[drwNo]={jo,nums};
-        }
-        fetched++;
-      }else{errors++;}
-    });
-
-    saveDrwCache(cacheKey,cache);
-    const done=Object.keys(cache).length;
-    const pct=Math.round(done/latestDrw*100);
-    setStatus('loading','<span class="fetch-spin">⏳</span>',
-      `수집 중... ${done}/${latestDrw}회차 (${pct}%)`);
-
-    // 50배치마다 통계 갱신
-    if(i>0&&(i/CONCURRENT)%50===0) renderStats();
-
-    // 과부하 방지 딜레이
-    if(i+CONCURRENT<missing.length) await new Promise(r=>setTimeout(r,150));
-  }
-
-  _isFetching[type]=false;
-
-  if(errors===0){
-    setStatus('success','✅',`전체 ${latestDrw}회차 수집 완료`);
-  }else{
-    setStatus('success','✅',
-      `${fetched}회차 완료 · ${errors}회차 오류 (재시도 가능)`);
-  }
-  renderStats();
-}
 
 /* ── 캐시에서 로또 통계 계산 ── */
 function calcLottoStatsFromCache(){
-  const cache=loadDrwCache(LOTTO_DRW_CACHE);
+  const cache=loadDrwCache(LS_LOTTO_KEY);
   const freq=Object.fromEntries(Array.from({length:45},(_,i)=>[i+1,0]));
   const draws=Object.values(cache);
-  draws.forEach(({nums})=>nums.forEach(n=>{if(freq[n]!==undefined)freq[n]++}));
+  draws.forEach(({nums})=>nums&&nums.forEach(n=>{if(freq[n]!==undefined)freq[n]++}));
   const total=Object.values(freq).reduce((a,b)=>a+b,0)||1;
-  const totalDraws=Object.keys(cache).length;
+  const totalDraws=draws.length;
   const entries=Object.entries(freq).map(([n,c])=>[Number(n),c]).sort((a,b)=>b[1]-a[1]);
   const hot=entries.slice(0,10);
   const cold=entries.slice(-10).reverse();
@@ -1315,12 +1309,13 @@ function calcLottoStatsFromCache(){
 
 /* ── 캐시에서 연금복권 통계 계산 ── */
 function calcPensionStatsFromCache(){
-  const cache=loadDrwCache(PENSION_DRW_CACHE);
+  const cache=loadDrwCache(LS_PENSION_KEY);
   const draws=Object.values(cache);
   const joFreq={1:0,2:0,3:0,4:0,5:0};
   const digitByPos=Array.from({length:6},()=>Object.fromEntries(Array.from({length:10},(_,i)=>[i,0])));
   const sumBandCnts=[0,0,0,0,0];
   draws.forEach(({jo,nums})=>{
+    if(!nums||!jo) return;
     joFreq[jo]=(joFreq[jo]||0)+1;
     nums.forEach((d,pos)=>{digitByPos[pos][d]=(digitByPos[pos][d]||0)+1});
     const s=nums.reduce((a,b)=>a+b,0);
@@ -1330,81 +1325,16 @@ function calcPensionStatsFromCache(){
   const SUM_COLORS=['#ef4444','#22c55e','#f97316','#eab308','#3b82f6'];
   const SUM_LABELS=['0 ~ 10','11 ~ 21','22 ~ 32','33 ~ 43','44 ~ 54'];
   const totalSumDraws=sumBandCnts.reduce((a,b)=>a+b,0)||1;
-  const sumBands=sumBandCnts.map((cnt,i)=>({
-    label:SUM_LABELS[i],pct:+(cnt/totalSumDraws*100).toFixed(1),color:SUM_COLORS[i]
-  }));
-  // 자리별 최다/최저
+  const sumBands=sumBandCnts.map((cnt,i)=>({label:SUM_LABELS[i],pct:+(cnt/totalSumDraws*100).toFixed(1),color:SUM_COLORS[i]}));
   const posStats=digitByPos.map((freq,pos)=>{
     const sorted=Object.entries(freq).map(([d,c])=>({d:Number(d),c})).sort((a,b)=>b.c-a.c);
     return{pos:pos+1,top:sorted[0],bottom:sorted[sorted.length-1]};
   });
   const digitTotal=Object.fromEntries(Array.from({length:10},(_,i)=>[i,0]));
-  digitByPos.forEach(p=>Object.entries(p).forEach(([d,c])=>digitTotal[d]+=c));
+  digitByPos.forEach(p=>Object.entries(p).forEach(([d,cv])=>digitTotal[d]+=cv));
   const totalDigits=Object.values(digitTotal).reduce((a,b)=>a+b,0)||1;
-  const digitStats=Object.entries(digitTotal).map(([d,c])=>({d:String(d),pct:+(c/totalDigits*100).toFixed(1),count:c}));
+  const digitStats=Object.entries(digitTotal).map(([d,cv])=>({d:String(d),pct:+(cv/totalDigits*100).toFixed(1),count:cv}));
   return{joFreq,digitStats,digitByPos,posStats,sumBands,totalDraws,hasSufficient:totalDraws>0};
-}
-
-/* ── 자동 업데이트 카드 (수동 입력 없음) ── */
-function renderAutoUpdateCard(el, type){
-  const cacheKey  = type==='lotto'?LOTTO_DRW_CACHE:PENSION_DRW_CACHE;
-  const latestDrw = type==='lotto'?calcLatestDrwNo():calcLatestPensionDrwNo();
-  const cache     = loadDrwCache(cacheKey);
-  const cachedCnt = Object.keys(cache).length;
-  const isComplete= cachedCnt>=latestDrw;
-  const label     = type==='lotto'?'로또':'연금복권';
-
-  const card=document.createElement('div');
-  card.style.cssText='background:linear-gradient(135deg,rgba(6,182,212,.06),var(--card));border:1px solid rgba(6,182,212,.25);border-radius:14px;padding:14px 15px;margin-bottom:13px';
-
-  const titleRow=document.createElement('div');
-  titleRow.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:6px';
-  const titleEl=document.createElement('div');
-  titleEl.style.cssText='font-size:12px;font-weight:900;color:var(--c-stats)';
-  titleEl.textContent=`🔄 ${label} 역대 당첨번호 자동 수집`;
-  const infoEl=document.createElement('div');
-  infoEl.style.cssText='font-size:10px;color:var(--sub)';
-  infoEl.textContent=`1회 ~ ${latestDrw}회 · ${cachedCnt}회차 보유`;
-  titleRow.appendChild(titleEl);titleRow.appendChild(infoEl);
-  card.appendChild(titleRow);
-
-  // 진행 바
-  const barWrap=document.createElement('div');
-  barWrap.style.cssText='background:var(--bg2);border-radius:6px;height:6px;margin-bottom:8px;overflow:hidden';
-  const bar=document.createElement('div');
-  const pct=latestDrw>0?Math.round(cachedCnt/latestDrw*100):0;
-  bar.style.cssText=`height:100%;border-radius:6px;background:${isComplete?'var(--safe)':'var(--c-stats)'};width:${pct}%;transition:width .6s ease`;
-  barWrap.appendChild(bar);card.appendChild(barWrap);
-
-  // 상태 표시
-  const statusEl=document.createElement('div');
-  statusEl.className=`fetch-status ${isComplete?'success':cachedCnt>0?'idle':'idle'}`;
-  statusEl.innerHTML=isComplete
-    ?`<span>✅</span><span>전체 ${latestDrw}회차 수집 완료 · 통계 반영 중</span>`
-    :`<span>📡</span><span>${cachedCnt>0?`${cachedCnt}/${latestDrw}회차 수집됨 — 재시작으로 이어서 수집`:'1회차부터 수집 시작 — 첫 수집은 약 3~5분 소요됩니다'}</span>`;
-  card.appendChild(statusEl);
-
-  // 버튼
-  const btn=document.createElement('button');
-  btn.style.cssText='width:100%;margin-top:9px;padding:10px;border-radius:9px;background:var(--c-stats);border:none;color:#0f172a;font-size:12px;font-weight:900;cursor:pointer;font-family:inherit';
-  btn.textContent=isComplete?`🔄 최신 회차 갱신 (${latestDrw}회차)`:'📡 전체 회차 수집 시작';
-  btn.addEventListener('click',async()=>{
-    btn.disabled=true;btn.textContent='⏳ 수집 중...';
-    await fetchAllDraws(type,statusEl);
-    btn.disabled=false;
-    btn.textContent=isComplete?`🔄 최신 회차 갱신 (${calcLatestDrwNo()}회차)`:'📡 전체 회차 수집 시작';
-    // 진행 바 갱신
-    const newCache=loadDrwCache(cacheKey);
-    bar.style.width=`${Math.round(Object.keys(newCache).length/latestDrw*100)}%`;
-    infoEl.textContent=`1회 ~ ${latestDrw}회 · ${Object.keys(newCache).length}회차 보유`;
-  });
-  card.appendChild(btn);
-  el.appendChild(card);
-
-  // 최신 회차가 캐시에 없으면 자동 시작
-  if(!cache[String(latestDrw)]){
-    setTimeout(()=>fetchAllDraws(type,statusEl),600);
-  }
 }
 
 function appendUserStatsTitle(el, type){
@@ -1736,7 +1666,7 @@ const LOTTO_COLD=[22,9,21,30,20,28,26,41,33,39,13,31,37,16,44];
 
 /* 캐시에서 로또 가중치 빌드 */
 function buildLottoWeights(){
-  const cache=loadDrwCache(LOTTO_DRW_CACHE);
+  const cache=loadDrwCache(LS_LOTTO_KEY);
   const draws=Object.values(cache);
   if(draws.length<50){
     const w={};
@@ -1763,7 +1693,7 @@ function buildLottoWeights(){
 
 /* 캐시에서 연금복권 자릿수 가중치 빌드 */
 function buildPensionWeights(){
-  const cache=loadDrwCache(PENSION_DRW_CACHE);
+  const cache=loadDrwCache(LS_PENSION_KEY);
   const draws=Object.values(cache);
   if(draws.length<30) return{posHot:null,posWeights:null,fromCache:false};
   const posFreq=Array.from({length:6},()=>Object.fromEntries(Array.from({length:10},(_,i)=>[i,0])));
