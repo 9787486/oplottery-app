@@ -1,0 +1,45 @@
+name: 동행복권 당첨번호 자동 수집
+
+on:
+  schedule:
+    # 로또: 매주 토요일 21:00 KST (12:00 UTC) — 추첨 20:45 후 15분
+    - cron: '0 12 * * 6'
+    # 연금복권: 매주 목요일 19:30 KST (10:30 UTC) — 추첨 19:05 후 25분
+    - cron: '30 10 * * 4'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: '수집 모드 (all=전체 / new=최신만)'
+        required: false
+        default: 'new'
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Python 설정
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 의존성 설치
+        run: pip install requests
+
+      - name: 당첨번호 수집
+        run: |
+          MODE=${{ github.event.inputs.mode || 'new' }}
+          python scripts/fetch_lottery.py --mode $MODE
+
+      - name: 변경사항 커밋 & 푸시
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/lotto.json data/pension.json
+          git diff --cached --quiet || git commit -m "🎱 당첨번호 자동 업데이트 $(date +'%Y-%m-%d %H:%M KST' -d '+9 hours')"
+          git push
