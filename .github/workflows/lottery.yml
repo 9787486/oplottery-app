@@ -2,10 +2,8 @@ name: 동행복권 당첨번호 자동 수집
 
 on:
   schedule:
-    # 로또: 매주 토요일 21:00 KST (12:00 UTC) — 추첨 20:45 후 15분
-    - cron: '0 12 * * 6'
-    # 연금복권: 매주 목요일 19:30 KST (10:30 UTC) — 추첨 19:05 후 25분
-    - cron: '30 10 * * 4'
+    - cron: '0 12 * * 6'   # 로또: 토요일 21:00 KST
+    - cron: '30 10 * * 4'  # 연금: 목요일 19:30 KST
   workflow_dispatch:
     inputs:
       mode:
@@ -29,7 +27,7 @@ jobs:
           python-version: '3.11'
 
       - name: 의존성 설치
-        run: pip install requests
+        run: pip install requests cloudscraper beautifulsoup4
 
       - name: 당첨번호 수집
         run: |
@@ -41,5 +39,5 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/lotto.json data/pension.json
-          git diff --cached --quiet || git commit -m "🎱 당첨번호 자동 업데이트 $(date +'%Y-%m-%d %H:%M KST' -d '+9 hours')"
+          git diff --cached --quiet || git commit -m "🎱 당첨번호 자동 업데이트 $(TZ=Asia/Seoul date +'%Y-%m-%d %H:%M KST')"
           git push
