@@ -27,11 +27,11 @@ jobs:
           python-version: '3.11'
 
       - name: 의존성 설치
-        run: |
-          pip install playwright
-          playwright install --with-deps chromium
+        run: pip install requests
 
       - name: 당첨번호 수집
+        env:
+          LOTTO_API_KEY: ${{ secrets.LOTTO_API_KEY }}
         run: |
           MODE=${{ github.event.inputs.mode || 'new' }}
           python scripts/fetch_lottery.py --mode $MODE
