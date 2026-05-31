@@ -27,7 +27,9 @@ jobs:
           python-version: '3.11'
 
       - name: 의존성 설치
-        run: pip install requests cloudscraper beautifulsoup4
+        run: |
+          pip install playwright
+          playwright install --with-deps chromium
 
       - name: 당첨번호 수집
         run: |
