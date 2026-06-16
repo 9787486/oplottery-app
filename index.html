@@ -1125,54 +1125,12 @@ document.getElementById('clear-history-btn').addEventListener('click',function()
 
 /* ═══ STATS ═══ */
 /* ═══════════════════════════════════════
-   동행복권 실제 당첨번호 통계
+   역대 당첨번호 통계
    ─────────────────────────────────────
-   로또 6/45 : 1회 ~ 1223회 (2002.12~2026.05)
-   총 7,338회 번호 출현 (보너스 제외)
-   연금복권 720+: 1회 ~ 314회 (2011.10~2026.05)
-
-   ※ 1223회 실제 당첨번호: 16·18·20·32·33·39 (보너스 26)
-   ※ 이후 신규 회차는 아래 '회차 추가' 기능으로 직접 누적 가능
+   data/lotto.json, data/pension.json 데이터를 기반으로 집계
+   매주 동행복권 사이트에서 신규 회차를 직접 확인하여
+   두 파일에 수기로 추가한 뒤 GitHub에 업로드하는 수동 갱신 방식
 ═══════════════════════════════════════ */
-
-/* 로또 1-1223회 전체 번호별 출현 횟수 (본 번호 기준) */
-/* ═══════════════════════════════════════
-   동행복권 전체 회차 자동 수집 시스템
-   ─────────────────────────────────────
-   · 로또:     1 ~ 현재 회차 (매주 토 20:45 추첨)
-   · 연금복권: 1 ~ 현재 회차 (매주 목 19:05 추첨)
-   · CORS 프록시 경유 자동 수집 → localStorage 영구 누적
-   · 추첨 후 최신 회차 자동 갱신
-═══════════════════════════════════════ */
-
-/* ── localStorage 캐시 키 ── */
-/* 캐시 키/함수는 아래 JSON 로더에서 정의 */
-
-/* ── 최신 회차 계산 ── */
-const LOTTO_REF_DRAW   = 1223;
-const LOTTO_REF_DATE   = new Date('2026-05-09T20:45:00+09:00');
-const PENSION_REF_DRAW = 314;
-const PENSION_REF_DATE = new Date('2026-05-07T19:05:00+09:00');
-
-function calcLatestDrwNo(){
-  const now=new Date();
-  const diff=now-LOTTO_REF_DATE;
-  if(diff<0) return LOTTO_REF_DRAW-1;
-  return LOTTO_REF_DRAW+Math.floor(diff/(7*24*3600*1000));
-}
-function calcLatestPensionDrwNo(){
-  const now=new Date();
-  const diff=now-PENSION_REF_DATE;
-  if(diff<0) return PENSION_REF_DRAW-1;
-  return PENSION_REF_DRAW+Math.floor(diff/(7*24*3600*1000));
-}
-
-/* ── 단건 fetch (CORS 프록시 이중화) ── */
-/* ═══ GitHub Actions 연동 JSON 데이터 로더 ═══
-   data/lotto.json, data/pension.json 을 읽어
-   localStorage 에 캐싱 → 통계에 반영
-   데이터는 GitHub Actions 가 매주 자동 갱신
-════════════════════════════════════════ */
 
 const JSON_LOTTO   = './data/lotto.json';
 const JSON_PENSION = './data/pension.json';
@@ -1212,14 +1170,14 @@ function getMeta(type){
   try{return JSON.parse(localStorage.getItem(mKey)||'{}')}catch{return{}}
 }
 
-/* 자동 업데이트 카드 (JSON 파일 기반) */
+/* 데이터 새로고침 카드 (수동 업로드 JSON 파일 로더) */
 function renderAutoUpdateCard(el, type){
   const cKey   = type==='lotto'?LS_LOTTO_KEY:LS_PENSION_KEY;
   const cache  = loadDrwCache(cKey);
   const meta   = getMeta(type);
   const cnt    = Object.keys(cache).length;
   const label  = type==='lotto'?'로또':'연금복권';
-  const nextTxt= type==='lotto'?'매주 토요일 21:00 자동 갱신':'매주 목요일 19:30 자동 갱신';
+  const nextTxt= type==='lotto'?'매주 토요일 추첨 후 직접 갱신':'매주 목요일 추첨 후 직접 갱신';
 
   const card=document.createElement('div');
   card.style.cssText='background:linear-gradient(135deg,rgba(6,182,212,.06),var(--card));border:1px solid rgba(6,182,212,.25);border-radius:14px;padding:14px 15px;margin-bottom:13px';
@@ -1238,7 +1196,7 @@ function renderAutoUpdateCard(el, type){
   const statusEl=document.createElement('div');
   statusEl.className=`fetch-status ${cnt>0?'success':'idle'}`;
   statusEl.innerHTML=cnt>0
-    ?`<span>✅</span><span>${cnt}회차 데이터 반영 완료 · GitHub Actions 자동 갱신</span>`
+    ?`<span>✅</span><span>${cnt}회차 데이터 반영 완료</span>`
     :`<span>📡</span><span>데이터 파일 로딩 중...</span>`;
   card.appendChild(statusEl);
 
@@ -1256,7 +1214,7 @@ function renderAutoUpdateCard(el, type){
       infoEl.textContent=`${res.total}회차 반영 · ${res.updated}`;
     }else{
       statusEl.className='fetch-status error';
-      statusEl.innerHTML='<span>❌</span><span>로드 실패 — GitHub Actions 데이터 파일을 확인하세요</span>';
+      statusEl.innerHTML='<span>❌</span><span>로드 실패 — data 폴더의 파일을 확인해주세요</span>';
     }
     btn.disabled=false;btn.textContent='🔄 최신 데이터 새로고침';
     renderStats();
@@ -1265,7 +1223,7 @@ function renderAutoUpdateCard(el, type){
 
   const note=document.createElement('div');
   note.style.cssText='font-size:10px;color:var(--sub);margin-top:8px;line-height:1.6';
-  note.innerHTML=`⚙️ <strong>자동 갱신</strong>: GitHub Actions가 ${nextTxt}<br>📁 데이터 위치: <code>data/${type==='lotto'?'lotto':'pension'}.json</code>`;
+  note.innerHTML=`⚙️ <strong>갱신 방식</strong>: ${nextTxt} (수동 업로드)<br>📁 데이터 위치: <code>data/${type==='lotto'?'lotto':'pension'}.json</code>`;
   card.appendChild(note);
   el.appendChild(card);
 
@@ -1288,10 +1246,12 @@ function renderAutoUpdateCard(el, type){
 function calcLottoStatsFromCache(){
   const cache=loadDrwCache(LS_LOTTO_KEY);
   const freq=Object.fromEntries(Array.from({length:45},(_,i)=>[i+1,0]));
-  const draws=Object.values(cache);
-  draws.forEach(({nums})=>nums&&nums.forEach(n=>{if(freq[n]!==undefined)freq[n]++}));
+  const draws=Object.values(cache).filter(d=>Array.isArray(d.nums)&&d.nums.length===6);
+  draws.forEach(({nums})=>nums.forEach(n=>{if(freq[n]!==undefined)freq[n]++}));
   const total=Object.values(freq).reduce((a,b)=>a+b,0)||1;
   const totalDraws=draws.length;
+  const drwKeys=Object.keys(cache).map(Number);
+  const latestRound=drwKeys.length?Math.max(...drwKeys):0;
   const entries=Object.entries(freq).map(([n,c])=>[Number(n),c]).sort((a,b)=>b[1]-a[1]);
   const hot=entries.slice(0,10);
   const cold=entries.slice(-10).reverse();
@@ -1304,7 +1264,25 @@ function calcLottoStatsFromCache(){
   ].map(b=>({...b,pct:+(b.nums.reduce((s,n)=>s+(freq[n]||0),0)/total*100).toFixed(1)}));
   const odd=entries.filter(([n])=>n%2===1).reduce((s,[,c])=>s+c,0);
   const oddPct=total>0?+(odd/total*100).toFixed(1):0;
-  return{entries,hot,cold,bands,oddPct,evenPct:+(100-oddPct).toFixed(1),totalDraws,hasSufficient:totalDraws>0};
+
+  /* ── 실제 회차 데이터 기반 합산·스팬·연속번호 통계 (AI 전략 생성에 재사용) ── */
+  let sumSum=0,sumSpan=0,consecCnt=0;
+  const sumList=[];
+  draws.forEach(({nums})=>{
+    const sorted=[...nums].sort((a,b)=>a-b);
+    const s=sorted.reduce((a,b)=>a+b,0);
+    sumList.push(s);sumSum+=s;sumSpan+=(sorted[5]-sorted[0]);
+    for(let i=0;i<5;i++){ if(sorted[i+1]-sorted[i]===1){consecCnt++;break} }
+  });
+  const avgSum = totalDraws? +(sumSum/totalDraws).toFixed(1) : 138.5;
+  const sumVar = totalDraws? sumList.reduce((a,b)=>a+(b-avgSum)**2,0)/totalDraws : 0;
+  const sumStd = totalDraws? +Math.sqrt(sumVar).toFixed(1) : 26;
+  const avgSpan= totalDraws? +(sumSpan/totalDraws).toFixed(1) : 30;
+  const consecPct = totalDraws? +(consecCnt/totalDraws*100).toFixed(1) : 64.8;
+
+  return{entries,hot,cold,bands,oddPct,evenPct:+(100-oddPct).toFixed(1),
+         totalDraws,latestRound,avgSum,sumStd,avgSpan,consecPct,
+         hasSufficient:totalDraws>0};
 }
 
 /* ── 캐시에서 연금복권 통계 계산 ── */
@@ -1322,6 +1300,16 @@ function calcPensionStatsFromCache(){
     sumBandCnts[s<=10?0:s<=21?1:s<=32?2:s<=43?3:4]++;
   });
   const totalDraws=draws.length;
+  const drwKeys=Object.keys(cache).map(Number);
+  const latestRound=drwKeys.length?Math.max(...drwKeys):0;
+
+  /* ── 실제 회차 데이터 기반 6자리 합산 통계 (AI 전략 생성에 재사용) ── */
+  const sumList=[];
+  draws.forEach(({nums})=>{ if(nums) sumList.push(nums.reduce((a,b)=>a+b,0)); });
+  const avgSum = sumList.length? +(sumList.reduce((a,b)=>a+b,0)/sumList.length).toFixed(1) : 27.5;
+  const sumVar = sumList.length? sumList.reduce((a,b)=>a+(b-avgSum)**2,0)/sumList.length : 0;
+  const sumStd = sumList.length? +Math.sqrt(sumVar).toFixed(1) : 7;
+
   const SUM_COLORS=['#ef4444','#22c55e','#f97316','#eab308','#3b82f6'];
   const SUM_LABELS=['0 ~ 10','11 ~ 21','22 ~ 32','33 ~ 43','44 ~ 54'];
   const totalSumDraws=sumBandCnts.reduce((a,b)=>a+b,0)||1;
@@ -1334,7 +1322,7 @@ function calcPensionStatsFromCache(){
   digitByPos.forEach(p=>Object.entries(p).forEach(([d,cv])=>digitTotal[d]+=cv));
   const totalDigits=Object.values(digitTotal).reduce((a,b)=>a+b,0)||1;
   const digitStats=Object.entries(digitTotal).map(([d,cv])=>({d:String(d),pct:+(cv/totalDigits*100).toFixed(1),count:cv}));
-  return{joFreq,digitStats,digitByPos,posStats,sumBands,totalDraws,hasSufficient:totalDraws>0};
+  return{joFreq,digitStats,digitByPos,posStats,sumBands,totalDraws,latestRound,avgSum,sumStd,hasSufficient:totalDraws>0};
 }
 
 function appendUserStatsTitle(el, type){
@@ -1353,13 +1341,12 @@ function renderOfficialStats(el, type){
 
   if(type==='lotto'){
     const s=calcLottoStatsFromCache();
-    const latestDrw=calcLatestDrwNo();
     card.innerHTML=`
       <div class="official-stats-title">📊 동행복권 로또 역대 당첨번호 통계</div>
-      <div class="official-stats-sub">※ 1 ~ ${latestDrw}회차 기준 (본번호 집계) · 실제 수집 ${s.totalDraws}회차 반영</div>
+      <div class="official-stats-sub">※ 1 ~ ${s.latestRound}회차 누적 데이터 기준 (본번호 집계)</div>
     `;
     if(!s.hasSufficient){
-      card.innerHTML+=`<div style="text-align:center;padding:20px;color:var(--sub);font-size:13px">📡 위 버튼으로 데이터를 수집하면 통계가 표시됩니다</div>`;
+      card.innerHTML+=`<div style="text-align:center;padding:20px;color:var(--sub);font-size:13px">📡 위 버튼으로 데이터를 불러오면 통계가 표시됩니다</div>`;
       el.appendChild(card);return;
     }
     const makeBalls=(arr,isCold)=>{
@@ -1392,9 +1379,9 @@ function renderOfficialStats(el, type){
     bandSec.appendChild(barGrp);card.appendChild(bandSec);
     const grid=document.createElement('div');grid.className='ostats-grid';
     [{val:`${s.oddPct}% / ${s.evenPct}%`,lbl:'홀수 / 짝수 비율'},
-     {val:'138.5',lbl:'당첨번호 평균 합산'},
-     {val:'64.8%',lbl:'연속번호 포함 확률'},
-     {val:`${s.totalDraws}회차`,lbl:'수집 완료 회차'}
+     {val:`${s.avgSum}`,lbl:'당첨번호 평균 합산'},
+     {val:`${s.consecPct}%`,lbl:'연속번호 포함 확률'},
+     {val:`${s.totalDraws}회차`,lbl:'누적 회차'}
     ].forEach(({val,lbl})=>{
       const b=document.createElement('div');b.className='ostats-badge';
       b.innerHTML=`<div class="ostats-badge-val">${val}</div><div class="ostats-badge-lbl">${lbl}</div>`;
@@ -1404,13 +1391,12 @@ function renderOfficialStats(el, type){
 
   } else {
     const ps=calcPensionStatsFromCache();
-    const latestDrw=calcLatestPensionDrwNo();
     card.innerHTML=`
       <div class="official-stats-title">📊 동행복권 연금복권 역대 당첨번호 통계</div>
-      <div class="official-stats-sub">※ 1 ~ ${latestDrw}회차 기준 · 실제 수집 ${ps.totalDraws}회차 반영</div>
+      <div class="official-stats-sub">※ 1 ~ ${ps.latestRound}회차 누적 데이터 기준</div>
     `;
     if(!ps.hasSufficient){
-      card.innerHTML+=`<div style="text-align:center;padding:20px;color:var(--sub);font-size:13px">📡 위 버튼으로 데이터를 수집하면 통계가 표시됩니다</div>`;
+      card.innerHTML+=`<div style="text-align:center;padding:20px;color:var(--sub);font-size:13px">📡 위 버튼으로 데이터를 불러오면 통계가 표시됩니다</div>`;
       el.appendChild(card);return;
     }
     // 조별
@@ -1461,7 +1447,7 @@ function renderOfficialStats(el, type){
     });
     sumSec.appendChild(sumBarGrp);card.appendChild(sumSec);
     const grid=document.createElement('div');grid.className='ostats-grid';
-    [{val:'27.5',lbl:'6자리 평균 합산'},{val:`${ps.totalDraws}회차`,lbl:'수집 완료 회차'}].forEach(({val,lbl})=>{
+    [{val:`${ps.avgSum}`,lbl:'6자리 평균 합산'},{val:`${ps.totalDraws}회차`,lbl:'누적 회차'}].forEach(({val,lbl})=>{
       const b=document.createElement('div');b.className='ostats-badge';
       b.innerHTML=`<div class="ostats-badge-val">${val}</div><div class="ostats-badge-lbl">${lbl}</div>`;
       grid.appendChild(b);
@@ -1626,23 +1612,16 @@ document.getElementById('clear-storage-btn').addEventListener('click',function()
 });
 
 /* ═══════════════════════════════════════
-   AI 행운픽 — 동행복권 역대 통계 기반 전략
+   AI 행운픽 — 통계 탭과 동일한 분석 함수를 그대로 재사용
    ─────────────────────────────────────
-   【로또 6/45 분석 근거 — 1~1150회차】
-   · 최다 출현(Hot15): 34,27,43,1,45,17,6,14,7,38,12,40,25,3,11
-   · 중간 출현(Mid15): 2,4,5,8,10,15,18,23,24,29,32,35,36,42,19
-   · 최저 출현(Cold15):22,9,21,30,20,28,26,41,33,39,13,31,37,16,44
-   · 역대 평균 합산: 138.5 (집중 구간 90~185)
-   · 홀짝 빈도: 3:3(32%) > 4:2(23%) = 2:4(23%)
-   · 고구간(30~45) 포함수 2~3개가 58% 차지
-   · 연속번호(n,n+1) 포함 확률 약 65%
-   · 번호 스팬(최소~최대 차) 평균 34.7
+   buildLottoWeights() → calcLottoStatsFromCache() 결과 재사용
+   buildPensionWeights() → calcPensionStatsFromCache() 결과 재사용
+   (최다/최저 출현, 평균 합산, 표준편차, 평균 스팬 모두
+    캐시된 실제 회차 데이터에서 매번 새로 계산됨 — 고정값 없음)
 
-   【연금복권 720+ 분석 근거】
-   · 조별 이론 확률 동일 (각 20%) — 단, 1등 당첨 실적 조편향 없음
-   · 6자리 합산: 평균 27.5 (범위 0~54, 집중 18~37)
-   · 연속 자릿수(n,n+1) 인접 패턴 약 42%
-   · 0 포함 비율 약 38%, 9 포함 비율 약 34%
+   5단계 전략의 합산 기준 = 실제 평균 ± 표준편차 배수로 자동 산출
+   → data/lotto.json·pension.json 이 갱신되면 기준값도 함께 갱신됨
+   → 데이터 50회차(로또)/30회차(연금) 미달 시에만 안전한 fallback 사용
 ═══════════════════════════════════════ */
 const STRATEGIES=[
   {key:'attack',     cls:'attack',     icon:'🔴', label:'공격형',  desc:'핫넘버·고구간 집중, 고합산'},
@@ -1664,49 +1643,46 @@ const LOTTO_HOT =[34,27,43,1,45,17,6,14,7,38,12,40,25,3,11];
 const LOTTO_MID =[2,4,5,8,10,15,18,23,24,29,32,35,36,42,19];
 const LOTTO_COLD=[22,9,21,30,20,28,26,41,33,39,13,31,37,16,44];
 
-/* 캐시에서 로또 가중치 빌드 */
+/* 통계 분석 결과(calcLottoStatsFromCache)를 그대로 재사용해 가중치 빌드 */
 function buildLottoWeights(){
-  const cache=loadDrwCache(LS_LOTTO_KEY);
-  const draws=Object.values(cache);
-  if(draws.length<50){
+  const s=calcLottoStatsFromCache();
+  if(!s.hasSufficient||s.totalDraws<50){
     const w={};
     LOTTO_HOT.forEach((n,i)=>w[n]=15-i);
     LOTTO_MID.forEach((n,i)=>w[n]=Math.max(1,8-Math.floor(i/2)));
     LOTTO_COLD.forEach(n=>w[n]=1);
     for(let n=1;n<=45;n++) if(!w[n]) w[n]=4;
-    return{weights:w,hot:LOTTO_HOT,mid:LOTTO_MID,cold:LOTTO_COLD,fromCache:false};
+    return{weights:w,hot:LOTTO_HOT,mid:LOTTO_MID,cold:LOTTO_COLD,
+           avgSum:138.5,sumStd:26,avgSpan:30,fromCache:false};
   }
-  const freq=Object.fromEntries(Array.from({length:45},(_,i)=>[i+1,0]));
-  draws.forEach(({nums})=>nums.forEach(n=>{if(freq[n]!==undefined)freq[n]++}));
-  const sorted=Object.entries(freq).map(([n,c])=>[Number(n),c]).sort((a,b)=>b[1]-a[1]);
-  const maxF=sorted[0][1],minF=sorted[sorted.length-1][1],rng=maxF-minF||1;
+  const maxF=s.entries[0][1],minF=s.entries[s.entries.length-1][1],rng=maxF-minF||1;
   const weights={};
-  sorted.forEach(([n,c])=>weights[n]=Math.max(1,Math.round(1+14*(c-minF)/rng)));
+  s.entries.forEach(([n,c])=>weights[n]=Math.max(1,Math.round(1+14*(c-minF)/rng)));
   return{
     weights,
-    hot:sorted.slice(0,15).map(e=>e[0]),
-    mid:sorted.slice(15,30).map(e=>e[0]),
-    cold:sorted.slice(-15).map(e=>e[0]),
+    hot:s.entries.slice(0,15).map(e=>e[0]),
+    mid:s.entries.slice(15,30).map(e=>e[0]),
+    cold:s.entries.slice(-15).map(e=>e[0]),
+    avgSum:s.avgSum, sumStd:s.sumStd||26, avgSpan:s.avgSpan||30,
     fromCache:true
   };
 }
 
-/* 캐시에서 연금복권 자릿수 가중치 빌드 */
+/* 통계 분석 결과(calcPensionStatsFromCache)를 그대로 재사용해 가중치 빌드 */
 function buildPensionWeights(){
-  const cache=loadDrwCache(LS_PENSION_KEY);
-  const draws=Object.values(cache);
-  if(draws.length<30) return{posHot:null,posWeights:null,fromCache:false};
-  const posFreq=Array.from({length:6},()=>Object.fromEntries(Array.from({length:10},(_,i)=>[i,0])));
-  draws.forEach(({nums})=>nums.forEach((d,pos)=>{posFreq[pos][d]=(posFreq[pos][d]||0)+1}));
-  const posHot=posFreq.map(freq=>Object.entries(freq).sort((a,b)=>b[1]-a[1]).map(e=>Number(e[0])));
-  const posWeights=posFreq.map(freq=>{
+  const ps=calcPensionStatsFromCache();
+  if(!ps.hasSufficient||ps.totalDraws<30){
+    return{posHot:null,posWeights:null,avgSum:27.5,sumStd:7,fromCache:false};
+  }
+  const posHot=ps.digitByPos.map(freq=>Object.entries(freq).sort((a,b)=>b[1]-a[1]).map(e=>Number(e[0])));
+  const posWeights=ps.digitByPos.map(freq=>{
     const vals=Object.values(freq);
     const mx=Math.max(...vals),mn=Math.min(...vals),rng=mx-mn||1;
     const w={};
     Object.entries(freq).forEach(([d,cv])=>w[Number(d)]=Math.max(1,Math.round(1+9*(cv-mn)/rng)));
     return w;
   });
-  return{posHot,posWeights,fromCache:true};
+  return{posHot,posWeights,avgSum:ps.avgSum,sumStd:ps.sumStd||7,fromCache:true};
 }
 
 /* 가중 랜덤 샘플링 */
@@ -1726,9 +1702,19 @@ function weightedSample(pool,weights,n){
   return[...result];
 }
 
-/* ── 로또 5전략 생성 (캐시 기반 동적 가중치) ── */
+/* ── 로또 5전략 생성 (실제 통계 평균·표준편차 기반 동적 기준) ── */
 function generateLottoByStrategy(stratKey){
-  const {weights:W,hot,mid,cold}=buildLottoWeights();
+  const {weights:W,hot,mid,cold,avgSum,sumStd,avgSpan}=buildLottoWeights();
+  const std=sumStd||26, minSpan=(avgSpan||30)*0.6;
+
+  /* 5단계 합산 기준 = 실제 평균 ± 표준편차 배수 (데이터가 바뀌면 자동 재계산) */
+  const SUM_RANGE={
+    attack:      [avgSum+0.3*std, avgSum+2.5*std],
+    semi_attack: [avgSum+0.0*std, avgSum+1.3*std],
+    balanced:    [avgSum-1.0*std, avgSum+1.0*std],
+    semi_safe:   [avgSum-1.3*std, avgSum+0.0*std],
+    safe:        [avgSum-2.5*std, avgSum-0.3*std],
+  };
 
   const validate=(arr,key)=>{
     const sum=arr.reduce((a,b)=>a+b,0);
@@ -1737,11 +1723,13 @@ function generateLottoByStrategy(stratKey){
     const low=arr.filter(n=>n<=20).length;
     const bands=[arr.some(n=>n<=11),arr.some(n=>n>=12&&n<=22),arr.some(n=>n>=23&&n<=33),arr.some(n=>n>=34)];
     const span=arr[arr.length-1]-arr[0];
-    if(key==='attack')      return sum>=130&&sum<=200&&high>=2&&high<=4&&odd>=2&&odd<=4&&span>=25;
-    if(key==='semi_attack') return sum>=115&&sum<=168&&high>=1&&high<=3&&odd>=2&&odd<=4&&span>=22;
-    if(key==='balanced')    return sum>=90&&sum<=170&&bands.filter(Boolean).length>=3&&odd>=2&&odd<=4&&span>=28;
-    if(key==='semi_safe')   return sum>=75&&sum<=120&&high<=2&&low>=2&&span>=20;
-    return sum>=55&&sum<=125&&low>=3&&high<=1&&span>=18;
+    const [lo,hi]=SUM_RANGE[key];
+    if(span<minSpan) return false;
+    if(key==='attack')      return sum>=lo&&sum<=hi&&high>=2&&high<=4&&odd>=2&&odd<=4;
+    if(key==='semi_attack') return sum>=lo&&sum<=hi&&high>=1&&high<=3&&odd>=2&&odd<=4;
+    if(key==='balanced')    return sum>=lo&&sum<=hi&&bands.filter(Boolean).length>=3&&odd>=2&&odd<=4;
+    if(key==='semi_safe')   return sum>=lo&&sum<=hi&&high<=2&&low>=2;
+    return sum>=lo&&sum<=hi&&low>=3&&high<=1;
   };
 
   let picks=[],attempts=0;
@@ -1790,9 +1778,10 @@ function generateLottoByStrategy(stratKey){
   return{picks,bonus,sum,odd};
 }
 
-/* ── 연금복권 5전략 생성 (캐시 기반 동적 가중치) ── */
+/* ── 연금복권 5전략 생성 (실제 통계 평균·표준편차 기반 동적 기준) ── */
 function generatePensionByStrategy(stratKey){
-  const {posHot,posWeights,fromCache}=buildPensionWeights();
+  const {posHot,posWeights,avgSum,sumStd,fromCache}=buildPensionWeights();
+  const std=sumStd||7;
   const jo=randInt(1,5);
   let nums,tries=0;
 
@@ -1806,33 +1795,41 @@ function generatePensionByStrategy(stratKey){
     return randInt(0,9);
   };
 
-  const sumOk=(nums,lo,hi)=>nums.reduce((a,b)=>a+b,0)>=lo&&nums.reduce((a,b)=>a+b,0)<=hi;
+  const sumOk=(nums,lo,hi)=>{const s=nums.reduce((a,b)=>a+b,0);return s>=lo&&s<=hi};
+
+  /* 5단계 합산 기준 = 실제 평균 ± 표준편차 배수 (데이터가 바뀌면 자동 재계산) */
+  const RANGE={
+    attack:      [avgSum+0.6*std, avgSum+3.2*std],
+    semi_attack: [avgSum+0.0*std, avgSum+2.0*std],
+    balanced:    [avgSum-1.1*std, avgSum+1.1*std],
+    semi_safe:   [avgSum-2.0*std, avgSum+0.0*std],
+    safe:        [avgSum-3.2*std, avgSum-0.6*std],
+  };
 
   if(stratKey==='attack'){
     do{nums=Array.from({length:6},(_,i)=>pickByPos(i,'high'));tries++}
-    while(!sumOk(nums,35,50)&&tries<80);
+    while(!sumOk(nums,...RANGE.attack)&&tries<80);
     if(tries>=80) nums=Array.from({length:6},()=>randInt(5,9));
   }else if(stratKey==='semi_attack'){
     do{nums=Array.from({length:6},(_,i)=>pickByPos(i,'high'));tries++}
-    while(!sumOk(nums,28,42)&&tries<80);
+    while(!sumOk(nums,...RANGE.semi_attack)&&tries<80);
     if(tries>=80) nums=Array.from({length:6},()=>randInt(4,8));
   }else if(stratKey==='balanced'){
     do{nums=Array.from({length:6},(_,i)=>pickByPos(i,null));tries++}
-    while(!sumOk(nums,20,36)&&tries<80);
+    while(!sumOk(nums,...RANGE.balanced)&&tries<80);
     if(tries>=80){const p=[1,3,5,7,9,0,2,4,6,8];nums=Array.from({length:6},(_,i)=>p[i%10])}
   }else if(stratKey==='semi_safe'){
     do{nums=Array.from({length:6},(_,i)=>pickByPos(i,'low'));tries++}
-    while(!sumOk(nums,14,28)&&tries<80);
+    while(!sumOk(nums,...RANGE.semi_safe)&&tries<80);
     if(tries>=80) nums=Array.from({length:6},()=>randInt(2,6));
   }else{
     do{nums=Array.from({length:6},(_,i)=>pickByPos(i,'low'));tries++}
-    while(!sumOk(nums,8,25)&&tries<80);
+    while(!sumOk(nums,...RANGE.safe)&&tries<80);
     if(tries>=80) nums=Array.from({length:6},()=>randInt(0,4));
   }
   return{jo,nums};
 }
 
-/* ═══ 공유 함수 ═══ */
 /* ═══ 공유 함수 ═══ */
 function shareNumber(text,title='원피스복권 번호'){
   const shareData={title,text:text+'\n\n🔗 원피스복권 번호 생성기',url:window.location.href};
