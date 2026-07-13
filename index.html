@@ -862,15 +862,13 @@ function generateLotto(){
   lottoGenBtn.disabled=true;setStat('✨ 번호 생성 중...',false);
   setTimeout(()=>{
     try{
-      /* 통계 빈도 가중치 로드 (캐시 50회차 이상 시 실제 데이터, 미달 시 fallback) */
-      const {weights:W,fromCache}=buildLottoWeights();
+      const {weights:BW,fromCache:bfc}=buildLottoWeights();
       lottoResults=[];
       for(let i=0;i<5;i++){
         const pool=Array.from({length:45},(_,k)=>k+1).filter(n=>!eSet.has(n)&&!mSet.has(n));
         let drawn;
-        if(fromCache&&pool.length>=(6-mSet.size)){
-          /* 빈도 가중 샘플링 — 자주 나온 번호를 살짝 더 선호 */
-          drawn=weightedSample(pool,W,6-mSet.size);
+        if(bfc&&pool.length>=(6-mSet.size)){
+          drawn=weightedSample(pool,BW,6-mSet.size);
         }else{
           drawn=sample(pool,6-mSet.size);
         }
@@ -957,14 +955,10 @@ const pensionResultsWrap=document.getElementById('pension-results-wrap');
 function generatePension(){
   const fJo=Number(document.getElementById('sel-jo').value);
   const fNums=digitVars.map(s=>s.value==='-'?null:Number(s.value));
-  /* 자리별 빈도 가중치 로드 (캐시 30회차 이상 시 실제 데이터) */
-  const {posHot,posWeights,fromCache:pFromCache}=buildPensionWeights();
+  const {posWeights:pW,fromCache:pfc}=buildPensionWeights();
   const getNums=()=>fNums.map((v,pos)=>{
     if(v!==null) return v;
-    if(pFromCache&&posWeights){
-      /* 자리별 실제 출현 빈도 가중 샘플링 */
-      return weightedSample(Array.from({length:10},(_,i)=>i),posWeights[pos],1)[0];
-    }
+    if(pfc&&pW) return weightedSample(Array.from({length:10},(_,i)=>i),pW[pos],1)[0];
     return randInt(0,9);
   });
   pensionResults=[];
@@ -1167,7 +1161,7 @@ document.getElementById('clear-history-btn').addEventListener('click',function()
 /* 캐시 키/함수는 아래 JSON 로더에서 정의 */
 
 /* ── 최신 회차 계산 ── */
-/* 회차 기준: 실제 캐시 데이터의 최대 회차(latestRound)를 사용 — 별도 계산 불필요 */
+/* 회차 기준: 실제 캐시 데이터의 latestRound 사용 */
 
 /* ── 단건 fetch (CORS 프록시 이중화) ── */
 /* ═══ JSON 데이터 로더 ═══
@@ -1240,7 +1234,7 @@ function renderAutoUpdateCard(el, type){
   const statusEl=document.createElement('div');
   statusEl.className=`fetch-status ${cnt>0?'success':'idle'}`;
   statusEl.innerHTML=cnt>0
-    ?`<span>✅</span><span>${cnt}회차 데이터 반영 완료</span>`
+    ?`<span>✅</span><span>${cnt}회차 데이터 반영 완료 · 수동 업로드</span>`
     :`<span>📡</span><span>데이터 파일 로딩 중...</span>`;
   card.appendChild(statusEl);
 
@@ -1289,14 +1283,30 @@ function renderAutoUpdateCard(el, type){
 /* ── 캐시에서 로또 통계 계산 ── */
 function calcLottoStatsFromCache(){
   const cache=loadDrwCache(LS_LOTTO_KEY);
-  const freq=Object.fromEntries(Array.from({length:45},(_,i)=>[i+1,0]));
-  const draws=Object.values(cache).filter(d=>Array.isArray(d.nums)&&d.nums.length===6);
-  draws.forEach(({nums})=>nums.forEach(n=>{if(freq[n]!==undefined)freq[n]++}));
-  const total=Object.values(freq).reduce((a,b)=>a+b,0)||1;
-  const totalDraws=draws.length;
+  const allDraws=Object.entries(cache)
+    .sort((a,b)=>Number(a[0])-Number(b[0]))
+    .map(([,v])=>v)
+    .filter(d=>Array.isArray(d.nums)&&d.nums.length===6);
+  const totalDraws=allDraws.length;
   const drwKeys=Object.keys(cache).map(Number);
   const latestRound=drwKeys.length?Math.max(...drwKeys):0;
+
+  /* 전체 빈도 */
+  const freq=Object.fromEntries(Array.from({length:45},(_,i)=>[i+1,0]));
+  allDraws.forEach(({nums})=>nums.forEach(n=>{if(freq[n]!==undefined)freq[n]++}));
+  const total=Object.values(freq).reduce((a,b)=>a+b,0)||1;
   const entries=Object.entries(freq).map(([n,c])=>[Number(n),c]).sort((a,b)=>b[1]-a[1]);
+
+  /* 최근 50/100회 빈도 */
+  const recentFreq=Object.fromEntries(Array.from({length:45},(_,i)=>[i+1,0]));
+  allDraws.slice(-50).forEach(({nums})=>nums.forEach(n=>{if(recentFreq[n]!==undefined)recentFreq[n]++}));
+  const midFreq=Object.fromEntries(Array.from({length:45},(_,i)=>[i+1,0]));
+  allDraws.slice(-100).forEach(({nums})=>nums.forEach(n=>{if(midFreq[n]!==undefined)midFreq[n]++}));
+
+  /* 마지막 출현 회차 */
+  const lastSeen=Object.fromEntries(Array.from({length:45},(_,i)=>[i+1,0]));
+  allDraws.forEach(({nums},idx)=>nums.forEach(n=>{lastSeen[n]=idx+1}));
+
   const hot=entries.slice(0,10);
   const cold=entries.slice(-10).reverse();
   const bands=[
@@ -1308,9 +1318,10 @@ function calcLottoStatsFromCache(){
   ].map(b=>({...b,pct:+(b.nums.reduce((s,n)=>s+(freq[n]||0),0)/total*100).toFixed(1)}));
   const odd=entries.filter(([n])=>n%2===1).reduce((s,[,c])=>s+c,0);
   const oddPct=total>0?+(odd/total*100).toFixed(1):0;
-  /* 실제 회차 데이터 기반 합산·스팬·연속번호 통계 */
+
+  /* 합산·스팬·연속번호 통계 */
   let sumSum=0,sumSpan=0,consecCnt=0;const sumList=[];
-  draws.forEach(({nums})=>{
+  allDraws.forEach(({nums})=>{
     const sorted=[...nums].sort((a,b)=>a-b);
     const s=sorted.reduce((a,b)=>a+b,0);
     sumList.push(s);sumSum+=s;sumSpan+=(sorted[5]-sorted[0]);
@@ -1321,30 +1332,41 @@ function calcLottoStatsFromCache(){
   const sumStd=totalDraws?+Math.sqrt(sumVar).toFixed(1):26;
   const avgSpan=totalDraws?+(sumSpan/totalDraws).toFixed(1):30;
   const consecPct=totalDraws?+(consecCnt/totalDraws*100).toFixed(1):64.8;
+
   return{entries,hot,cold,bands,oddPct,evenPct:+(100-oddPct).toFixed(1),
-         totalDraws,latestRound,avgSum,sumStd,avgSpan,consecPct,hasSufficient:totalDraws>0};
+         totalDraws,latestRound,avgSum,sumStd,avgSpan,consecPct,
+         allFreq:freq,recentFreq,midFreq,lastSeen,hasSufficient:totalDraws>0};
 }
 
-/* ── 캐시에서 연금복권 통계 계산 ── */
+/* ── 캐시에서 연금복권 통계 계산 (다기간 분석 포함) ── */
 function calcPensionStatsFromCache(){
   const cache=loadDrwCache(LS_PENSION_KEY);
-  const draws=Object.values(cache).filter(d=>Array.isArray(d.nums)&&d.nums.length===6);
-  const joFreq={1:0,2:0,3:0,4:0,5:0};
-  const digitByPos=Array.from({length:6},()=>Object.fromEntries(Array.from({length:10},(_,i)=>[i,0])));
-  const sumBandCnts=[0,0,0,0,0];
-  const sumList=[];
-  draws.forEach(({jo,nums})=>{
-    if(!nums||!jo) return;
-    joFreq[jo]=(joFreq[jo]||0)+1;
-    nums.forEach((d,pos)=>{digitByPos[pos][d]=(digitByPos[pos][d]||0)+1});
-    const s=nums.reduce((a,b)=>a+b,0);
-    sumList.push(s);
-    sumBandCnts[s<=10?0:s<=21?1:s<=32?2:s<=43?3:4]++;
-  });
-  const totalDraws=draws.length;
+  const allDraws=Object.entries(cache)
+    .sort((a,b)=>Number(a[0])-Number(b[0]))
+    .map(([,v])=>v)
+    .filter(d=>Array.isArray(d.nums)&&d.nums.length===6);
+  const totalDraws=allDraws.length;
   const drwKeys=Object.keys(cache).map(Number);
   const latestRound=drwKeys.length?Math.max(...drwKeys):0;
-  /* 실제 합산 평균·표준편차 */
+  const joFreq={1:0,2:0,3:0,4:0,5:0};
+  const digitByPos=Array.from({length:6},()=>Object.fromEntries(Array.from({length:10},(_,i)=>[i,0])));
+  const recentDigitByPos=Array.from({length:6},()=>Object.fromEntries(Array.from({length:10},(_,i)=>[i,0])));
+  const lastSeenByPos=Array.from({length:6},()=>Object.fromEntries(Array.from({length:10},(_,i)=>[i,0])));
+  const sumBandCnts=[0,0,0,0,0];const sumList=[];
+  allDraws.forEach(({jo,nums},idx)=>{
+    if(!nums||!jo) return;
+    joFreq[jo]=(joFreq[jo]||0)+1;
+    nums.forEach((d,pos)=>{
+      digitByPos[pos][d]=(digitByPos[pos][d]||0)+1;
+      lastSeenByPos[pos][d]=idx+1;
+    });
+    const s=nums.reduce((a,b)=>a+b,0);
+    sumList.push(s);sumBandCnts[s<=10?0:s<=21?1:s<=32?2:s<=43?3:4]++;
+  });
+  allDraws.slice(-50).forEach(({nums})=>{
+    if(!nums) return;
+    nums.forEach((d,pos)=>{recentDigitByPos[pos][d]=(recentDigitByPos[pos][d]||0)+1});
+  });
   const avgSum=sumList.length?+(sumList.reduce((a,b)=>a+b,0)/sumList.length).toFixed(1):27.5;
   const sumVar=sumList.length?sumList.reduce((a,b)=>a+(b-avgSum)**2,0)/sumList.length:0;
   const sumStd=sumList.length?+Math.sqrt(sumVar).toFixed(1):7;
@@ -1360,7 +1382,8 @@ function calcPensionStatsFromCache(){
   digitByPos.forEach(p=>Object.entries(p).forEach(([d,cv])=>digitTotal[d]+=cv));
   const totalDigits=Object.values(digitTotal).reduce((a,b)=>a+b,0)||1;
   const digitStats=Object.entries(digitTotal).map(([d,cv])=>({d:String(d),pct:+(cv/totalDigits*100).toFixed(1),count:cv}));
-  return{joFreq,digitStats,digitByPos,posStats,sumBands,totalDraws,latestRound,avgSum,sumStd,hasSufficient:totalDraws>0};
+  return{joFreq,digitStats,digitByPos,recentDigitByPos,lastSeenByPos,posStats,sumBands,
+         totalDraws,latestRound,avgSum,sumStd,hasSufficient:totalDraws>0};
 }
 
 function appendUserStatsTitle(el, type){
@@ -1677,11 +1700,10 @@ const STRATEGIES=[
 ];
 
 /* ═══════════════════════════════════════
-   AI 행운픽 + 기본 생성 — 통계 데이터 기반 동적 알고리즘
+   AI 행운픽 — 수집 데이터 기반 동적 알고리즘
    ─────────────────────────────────────
-   로또/연금복권 기본 생성: 빈도 가중 샘플링 (캐시 50/30회차 이상 시)
-   AI픽 5전략: 실제 평균±표준편차 기반 동적 합산 기준 (고정값 없음)
-   fallback: 캐시 데이터 부족 시 안전한 하드코딩 값 사용
+   캐시에 50회차 이상 → 실제 빈도 가중치 사용
+   미달 → 하드코딩 fallback 사용
 ═══════════════════════════════════════ */
 
 /* 하드코딩 fallback */
@@ -1689,7 +1711,10 @@ const LOTTO_HOT =[34,27,43,1,45,17,6,14,7,38,12,40,25,3,11];
 const LOTTO_MID =[2,4,5,8,10,15,18,23,24,29,32,35,36,42,19];
 const LOTTO_COLD=[22,9,21,30,20,28,26,41,33,39,13,31,37,16,44];
 
-/* 통계 분석 결과를 재사용해 가중치 빌드 */
+/* 캐시에서 로또 가중치 빌드 */
+/* 다기간 복합 가중치 빌드
+   전체빈도 40% + 최근50회 35% + 중기100회 15% + 미출현점수 10%
+   → buildLottoWeights()가 호출될 때마다 실제 데이터로 재계산 */
 function buildLottoWeights(){
   const s=calcLottoStatsFromCache();
   if(!s.hasSufficient||s.totalDraws<50){
@@ -1699,35 +1724,77 @@ function buildLottoWeights(){
     LOTTO_COLD.forEach(n=>w[n]=1);
     for(let n=1;n<=45;n++) if(!w[n]) w[n]=4;
     return{weights:w,hot:LOTTO_HOT,mid:LOTTO_MID,cold:LOTTO_COLD,
-           avgSum:138.5,sumStd:26,avgSpan:30,fromCache:false};
+           avgSum:138.5,sumStd:26,avgSpan:30,overdue:{},fromCache:false};
   }
-  const maxF=s.entries[0][1],minF=s.entries[s.entries.length-1][1],rng=maxF-minF||1;
-  const weights={};
-  s.entries.forEach(([n,cv])=>weights[n]=Math.max(1,Math.round(1+14*(cv-minF)/rng)));
+
+  const n=s.totalDraws;
+  /* 각 구간 정규화 헬퍼 */
+  const norm=(freq)=>{
+    const vals=Object.values(freq);
+    const mx=Math.max(...vals),mn=Math.min(...vals),rng=mx-mn||1;
+    return Object.fromEntries(Object.entries(freq).map(([k,v])=>[Number(k),(v-mn)/rng]));
+  };
+  const allN=norm(s.allFreq);
+  const recN=norm(s.recentFreq);
+  const midN=norm(s.midFreq);
+
+  /* 미출현(overdue) 점수: 평균 출현 간격 대비 오래 안 나온 번호 */
+  const overdue={};
+  for(let num=1;num<=45;num++){
+    const totalAppear=s.allFreq[num]||1;
+    const expectedGap=n/totalAppear;
+    const drawsSinceLast=n-(s.lastSeen[num]||0);
+    overdue[num]=Math.min(1,drawsSinceLast/Math.max(1,expectedGap*1.5));
+  }
+
+  /* 복합 점수 = 전체40 + 최근35 + 중기15 + 미출현10 */
+  const composite={};
+  for(let num=1;num<=45;num++){
+    const score=0.40*(allN[num]||0)+0.35*(recN[num]||0)+0.15*(midN[num]||0)+0.10*overdue[num];
+    composite[num]=Math.max(1,Math.round(1+14*score));
+  }
+
+  /* hot/mid/cold: 복합 점수 기준 정렬 */
+  const sortedByComposite=Array.from({length:45},(_,i)=>i+1).sort((a,b)=>composite[b]-composite[a]);
   return{
-    weights,
-    hot:s.entries.slice(0,15).map(e=>e[0]),
-    mid:s.entries.slice(15,30).map(e=>e[0]),
-    cold:s.entries.slice(-15).map(e=>e[0]),
+    weights:composite,
+    hot:sortedByComposite.slice(0,15),
+    mid:sortedByComposite.slice(15,30),
+    cold:sortedByComposite.slice(-15),
     avgSum:s.avgSum,sumStd:s.sumStd||26,avgSpan:s.avgSpan||30,
-    fromCache:true
+    overdue,fromCache:true
   };
 }
 
-/* 통계 분석 결과를 재사용해 연금복권 자릿수 가중치 빌드 */
+/* 연금복권 자리별 다기간 복합 가중치
+   전체빈도 45% + 최근50회 40% + 미출현점수 15% */
 function buildPensionWeights(){
   const ps=calcPensionStatsFromCache();
   if(!ps.hasSufficient||ps.totalDraws<30){
     return{posHot:null,posWeights:null,avgSum:27.5,sumStd:7,fromCache:false};
   }
-  const posHot=ps.digitByPos.map(freq=>Object.entries(freq).sort((a,b)=>b[1]-a[1]).map(e=>Number(e[0])));
-  const posWeights=ps.digitByPos.map(freq=>{
+  const n=ps.totalDraws;
+  const norm=(freq)=>{
     const vals=Object.values(freq);
     const mx=Math.max(...vals),mn=Math.min(...vals),rng=mx-mn||1;
+    return Object.fromEntries(Object.entries(freq).map(([k,v])=>[Number(k),(v-mn)/rng]));
+  };
+  const posWeights=ps.digitByPos.map((allFreq,pos)=>{
+    const allN=norm(allFreq);
+    const recN=norm(ps.recentDigitByPos[pos]);
+    const lastSeen=ps.lastSeenByPos[pos];
     const w={};
-    Object.entries(freq).forEach(([d,cv])=>w[Number(d)]=Math.max(1,Math.round(1+9*(cv-mn)/rng)));
+    for(let d=0;d<10;d++){
+      const totalApp=allFreq[d]||1;
+      const expectedGap=n/totalApp;
+      const drawsSince=n-(lastSeen[d]||0);
+      const overdueScore=Math.min(1,drawsSince/Math.max(1,expectedGap*1.5));
+      const score=0.45*(allN[d]||0)+0.40*(recN[d]||0)+0.15*overdueScore;
+      w[d]=Math.max(1,Math.round(1+9*score));
+    }
     return w;
   });
+  const posHot=posWeights.map(w=>Object.entries(w).sort((a,b)=>b[1]-a[1]).map(e=>Number(e[0])));
   return{posHot,posWeights,avgSum:ps.avgSum,sumStd:ps.sumStd||7,fromCache:true};
 }
 
@@ -1748,18 +1815,18 @@ function weightedSample(pool,weights,n){
   return[...result];
 }
 
-/* ── 로또 5전략 생성 (실제 통계 평균·표준편차 기반 동적 기준) ── */
+/* ── 로또 5전략 생성 (다기간 복합 가중치 + 동적 합산 기준) ── */
 function generateLottoByStrategy(stratKey){
-  const {weights:W,hot,mid,cold,avgSum,sumStd,avgSpan}=buildLottoWeights();
+  const {weights:W,hot,mid,cold,avgSum,sumStd,avgSpan,overdue,fromCache}=buildLottoWeights();
   const std=sumStd||26, minSpan=Math.round((avgSpan||30)*0.55);
 
-  /* 5단계 합산 기준 = 실제 평균 ± 표준편차 배수 (데이터 갱신 시 자동 재계산) */
-  const SUM_RANGE={
-    attack:      [Math.round(avgSum+0.3*std), Math.round(avgSum+2.5*std)],
-    semi_attack: [Math.round(avgSum+0.0*std), Math.round(avgSum+1.3*std)],
-    balanced:    [Math.round(avgSum-1.0*std), Math.round(avgSum+1.0*std)],
-    semi_safe:   [Math.round(avgSum-1.3*std), Math.round(avgSum+0.0*std)],
-    safe:        [Math.round(avgSum-2.5*std), Math.round(avgSum-0.3*std)],
+  /* 동적 합산 기준 = 실제 평균 ± 표준편차 배수 */
+  const SR={
+    attack:      [Math.round(avgSum+0.4*std), Math.round(avgSum+2.5*std)],
+    semi_attack: [Math.round(avgSum+0.1*std), Math.round(avgSum+1.4*std)],
+    balanced:    [Math.round(avgSum-0.9*std), Math.round(avgSum+0.9*std)],
+    semi_safe:   [Math.round(avgSum-1.4*std), Math.round(avgSum-0.1*std)],
+    safe:        [Math.round(avgSum-2.5*std), Math.round(avgSum-0.4*std)],
   };
 
   const validate=(arr,key)=>{
@@ -1769,7 +1836,7 @@ function generateLottoByStrategy(stratKey){
     const low=arr.filter(n=>n<=20).length;
     const bands=[arr.some(n=>n<=11),arr.some(n=>n>=12&&n<=22),arr.some(n=>n>=23&&n<=33),arr.some(n=>n>=34)];
     const span=arr[arr.length-1]-arr[0];
-    const [lo,hi]=SUM_RANGE[key];
+    const [lo,hi]=SR[key];
     if(span<minSpan) return false;
     if(key==='attack')      return sum>=lo&&sum<=hi&&high>=2&&high<=4&&odd>=2&&odd<=4;
     if(key==='semi_attack') return sum>=lo&&sum<=hi&&high>=1&&high<=3&&odd>=2&&odd<=4;
@@ -1778,44 +1845,71 @@ function generateLottoByStrategy(stratKey){
     return sum>=lo&&sum<=hi&&low>=3&&high<=1;
   };
 
+  /* 전략별 가중치 변형 */
+  const makeW=(base)=>{
+    const w={...base};
+    if(!fromCache||!overdue) return w;
+    if(stratKey==='attack'){
+      /* 최근 hot + 고구간 2배 편향 */
+      hot.forEach(n=>{w[n]=(w[n]||1)*1.8});
+      for(let n=30;n<=45;n++) w[n]=(w[n]||1)*2.0;
+    }else if(stratKey==='semi_attack'){
+      /* hot + 중상구간 1.5배 */
+      hot.forEach(n=>{w[n]=(w[n]||1)*1.5});
+      for(let n=23;n<=40;n++) w[n]=(w[n]||1)*1.3;
+    }else if(stratKey==='balanced'){
+      /* 복합 가중치 그대로 + overdue 가중 살짝 추가 */
+      for(let n=1;n<=45;n++) w[n]=(w[n]||1)*(1+0.3*(overdue[n]||0));
+    }else if(stratKey==='semi_safe'){
+      /* 저구간 + 미출현 편향 */
+      for(let n=1;n<=22;n++) w[n]=(w[n]||1)*1.4;
+      for(let n=1;n<=45;n++) w[n]=(w[n]||1)*(1+0.5*(overdue[n]||0));
+    }else{
+      /* 안정형: 미출현 + cold 역가중 */
+      cold.forEach(n=>{w[n]=(w[n]||1)*(1+1.5*(overdue[n]||0))});
+      for(let n=1;n<=20;n++) w[n]=(w[n]||1)*1.6;
+    }
+    return w;
+  };
+
   let picks=[],attempts=0;
+  const allPool=Array.from({length:45},(_,i)=>i+1);
   do{
     if(stratKey==='attack'){
-      const highPool=Array.from({length:16},(_,i)=>i+30);
-      const hotLow=hot.filter(n=>n<30);
-      const pool=[...new Set([...highPool,...hotLow,...mid.filter(n=>n>20)])];
-      const w={...W};highPool.forEach(n=>{w[n]=(w[n]||1)*2});
-      picks=weightedSample(pool,w,6).sort((a,b)=>a-b);
+      const w=makeW(W);
+      const pool=[...new Set([...hot,...Array.from({length:16},(_,i)=>i+30),...mid.filter(n=>n>20)])];
+      picks=weightedSample(pool.length>=6?pool:allPool,w,6).sort((a,b)=>a-b);
     }else if(stratKey==='semi_attack'){
-      const midHigh=Array.from({length:16},(_,i)=>i+25);
-      const pool=[...new Set([...hot,...mid,...midHigh])];
-      const w={...W};midHigh.forEach(n=>{w[n]=(w[n]||1)*1.5});
-      picks=weightedSample(pool,w,6).sort((a,b)=>a-b);
+      const w=makeW(W);
+      const pool=[...new Set([...hot,...mid,...Array.from({length:16},(_,i)=>i+25)])];
+      picks=weightedSample(pool.length>=6?pool:allPool,w,6).sort((a,b)=>a-b);
     }else if(stratKey==='balanced'){
-      const bands=[
+      const w=makeW(W);
+      /* 4밴드 균등 배분: 각 밴드서 1개 + 복합가중치로 2개 추가 */
+      const bandPools=[
         Array.from({length:11},(_,i)=>i+1),Array.from({length:11},(_,i)=>i+12),
         Array.from({length:11},(_,i)=>i+23),Array.from({length:12},(_,i)=>i+34)
       ];
-      const base=bands.map(b=>weightedSample(b,W,1)[0]);
-      const rest=Array.from({length:45},(_,i)=>i+1).filter(n=>!base.includes(n));
-      picks=[...base,...weightedSample(rest,W,2)].sort((a,b)=>a-b);
+      const base=bandPools.map(b=>weightedSample(b,w,1)[0]);
+      const rest=allPool.filter(n=>!base.includes(n));
+      picks=[...base,...weightedSample(rest,w,2)].sort((a,b)=>a-b);
     }else if(stratKey==='semi_safe'){
+      const w=makeW(W);
       const pool=[...new Set([...mid,...cold,...Array.from({length:32},(_,i)=>i+1)])];
-      const w={...W};for(let n=1;n<=20;n++) w[n]=(w[n]||1)*1.3;
-      picks=weightedSample(pool,w,6).sort((a,b)=>a-b);
+      picks=weightedSample(pool.length>=6?pool:allPool,w,6).sort((a,b)=>a-b);
     }else{
-      const coldLow=[...cold,...mid.filter(n=>n<=20)];
-      const lowExtra=Array.from({length:20},(_,i)=>i+1).filter(n=>!coldLow.includes(n));
-      const pool=[...new Set([...coldLow,...lowExtra])];
-      const revW={};pool.forEach(n=>{revW[n]=Math.max(1,17-(W[n]||4))});
-      picks=weightedSample(pool,revW,6).sort((a,b)=>a-b);
+      /* 안정형: 미출현 높은 번호 + 저구간 위주 */
+      const w=makeW(W);
+      const dueSorted=allPool.slice().sort((a,b)=>(overdue[b]||0)-(overdue[a]||0));
+      const pool=[...new Set([...dueSorted.slice(0,20),...cold,...Array.from({length:20},(_,i)=>i+1)])];
+      picks=weightedSample(pool.length>=6?pool:allPool,w,6).sort((a,b)=>a-b);
     }
     attempts++;
-  }while(!validate(picks,stratKey)&&attempts<200);
+  }while(!validate(picks,stratKey)&&attempts<300);
 
-  if(picks.length<6){
-    const all=Array.from({length:45},(_,i)=>i+1).filter(n=>!picks.includes(n));
-    while(picks.length<6&&all.length) picks.push(all.splice(randInt(0,all.length-1),1)[0]);
+  if(picks.length<6||new Set(picks).size<6){
+    const need=allPool.filter(n=>!picks.includes(n));
+    while(picks.length<6&&need.length) picks.push(need.splice(randInt(0,need.length-1),1)[0]);
   }
   picks=[...new Set(picks)].sort((a,b)=>a-b).slice(0,6);
   const bonus=picks[randInt(0,picks.length-1)];
@@ -1824,55 +1918,45 @@ function generateLottoByStrategy(stratKey){
   return{picks,bonus,sum,odd};
 }
 
-/* ── 연금복권 5전략 생성 (실제 통계 평균·표준편차 기반 동적 기준) ── */
+/* ── 연금복권 5전략 생성 (자리별 다기간 복합 가중치 + 동적 합산 기준) ── */
 function generatePensionByStrategy(stratKey){
   const {posHot,posWeights,avgSum,sumStd,fromCache}=buildPensionWeights();
   const std=sumStd||7;
   const jo=randInt(1,5);
   let nums,tries=0;
 
-  /* 5단계 합산 기준 = 실제 평균 ± 표준편차 배수 (데이터 갱신 시 자동 재계산) */
-  const RANGE={
-    attack:      [Math.round(avgSum+0.6*std), Math.round(avgSum+3.2*std)],
-    semi_attack: [Math.round(avgSum+0.0*std), Math.round(avgSum+2.0*std)],
-    balanced:    [Math.round(avgSum-1.1*std), Math.round(avgSum+1.1*std)],
-    semi_safe:   [Math.round(avgSum-2.0*std), Math.round(avgSum+0.0*std)],
-    safe:        [Math.round(avgSum-3.2*std), Math.round(avgSum-0.6*std)],
+  /* 동적 합산 기준 = 실제 평균 ± 표준편차 배수 */
+  const PR={
+    attack:      [Math.round(avgSum+0.7*std), Math.min(54,Math.round(avgSum+3.0*std))],
+    semi_attack: [Math.round(avgSum+0.1*std), Math.round(avgSum+2.0*std)],
+    balanced:    [Math.round(avgSum-1.0*std), Math.round(avgSum+1.0*std)],
+    semi_safe:   [Math.round(avgSum-2.0*std), Math.round(avgSum-0.1*std)],
+    safe:        [Math.max(0,Math.round(avgSum-3.0*std)), Math.round(avgSum-0.7*std)],
   };
+  const sumOk=(nums,lo,hi)=>{const s=nums.reduce((a,b)=>a+b,0);return s>=lo&&s<=hi};
 
-  const pickByPos=(pos,bias)=>{
+  const biasMap={attack:'high',semi_attack:'high',balanced:null,semi_safe:'low',safe:'low'};
+  const bias=biasMap[stratKey]||null;
+  const boostFactor={attack:3.0,semi_attack:2.0,balanced:1.0,semi_safe:2.0,safe:3.0}[stratKey]||1;
+
+  const pickByPos=(pos)=>{
     if(fromCache&&posWeights){
       const w={...posWeights[pos]};
-      if(bias==='high') posHot[pos].slice(0,4).forEach(d=>{w[d]=(w[d]||1)*2.5});
-      if(bias==='low')  posHot[pos].slice(-4).forEach(d=>{w[d]=(w[d]||1)*2.5});
+      if(bias==='high') posHot[pos].slice(0,3).forEach(d=>{w[d]=(w[d]||1)*boostFactor});
+      if(bias==='low')  posHot[pos].slice(-3).forEach(d=>{w[d]=(w[d]||1)*boostFactor});
       return weightedSample(Array.from({length:10},(_,i)=>i),w,1)[0];
     }
+    if(bias==='high') return randInt(5,9);
+    if(bias==='low')  return randInt(0,4);
     return randInt(0,9);
   };
 
-  const sumOk=(nums,lo,hi)=>{const s=nums.reduce((a,b)=>a+b,0);return s>=lo&&s<=hi};
+  const [lo,hi]=PR[stratKey]||[Math.round(avgSum-std),Math.round(avgSum+std)];
+  const fallbackMap={attack:randInt(5,9),semi_attack:randInt(4,8),balanced:randInt(2,7),semi_safe:randInt(1,5),safe:randInt(0,4)};
+  do{nums=Array.from({length:6},(_,i)=>pickByPos(i));tries++}
+  while(!sumOk(nums,lo,hi)&&tries<100);
+  if(tries>=100) nums=Array.from({length:6},()=>fallbackMap[stratKey]??randInt(0,9));
 
-  if(stratKey==='attack'){
-    do{nums=Array.from({length:6},(_,i)=>pickByPos(i,'high'));tries++}
-    while(!sumOk(nums,...RANGE.attack)&&tries<80);
-    if(tries>=80) nums=Array.from({length:6},()=>randInt(5,9));
-  }else if(stratKey==='semi_attack'){
-    do{nums=Array.from({length:6},(_,i)=>pickByPos(i,'high'));tries++}
-    while(!sumOk(nums,...RANGE.semi_attack)&&tries<80);
-    if(tries>=80) nums=Array.from({length:6},()=>randInt(4,8));
-  }else if(stratKey==='balanced'){
-    do{nums=Array.from({length:6},(_,i)=>pickByPos(i,null));tries++}
-    while(!sumOk(nums,...RANGE.balanced)&&tries<80);
-    if(tries>=80){const p=[1,3,5,7,9,0,2,4,6,8];nums=Array.from({length:6},(_,i)=>p[i%10])}
-  }else if(stratKey==='semi_safe'){
-    do{nums=Array.from({length:6},(_,i)=>pickByPos(i,'low'));tries++}
-    while(!sumOk(nums,...RANGE.semi_safe)&&tries<80);
-    if(tries>=80) nums=Array.from({length:6},()=>randInt(2,6));
-  }else{
-    do{nums=Array.from({length:6},(_,i)=>pickByPos(i,'low'));tries++}
-    while(!sumOk(nums,...RANGE.safe)&&tries<80);
-    if(tries>=80) nums=Array.from({length:6},()=>randInt(0,4));
-  }
   return{jo,nums};
 }
 
