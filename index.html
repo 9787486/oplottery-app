@@ -8,6 +8,13 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="원피스복권" />
+<meta property="og:type"        content="website" />
+<meta property="og:title"       content="원피스복권 번호 생성기" />
+<meta property="og:description" content="로또 6/45 & 연금복권 720+ AI 번호 생성기. 동행복권 역대 통계 기반 공격/균형/안정 전략." />
+<meta property="og:image"       content="icon-1024.png" />
+<meta name="twitter:card"       content="summary" />
+<meta name="twitter:title"      content="원피스복권 번호 생성기" />
+<meta name="twitter:description" content="로또·연금복권 AI 번호 생성 & 통계 분석 앱" />
   <title>원피스복권 번호 생성기</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png" />
@@ -20,8 +27,8 @@
     /* ═══ CSS VARIABLES ═══ */
     :root {
       --bg:#0B1120;--bg2:#111827;--card:#1a2235;--border:#2a3a55;
-      --text:#e8edf5;--sub:#7a8aaa;--accent:#4f8ef7;--accent2:#7c3aed;
-      --red:#ef4444;--green:#22c55e;--gold:#f59e0b;
+      --text:#e8edf5;--sub:#7a8aaa;--accent:#4f8ef7;
+      --red:#ef4444;--green:#22c55e;
       --jo1:#22c55e;--jo2:#f97316;--jo3:#facc15;--jo4:#3b82f6;--jo5:#a85d22;
       --radius:16px;--safe-bottom:env(safe-area-inset-bottom,0px);
       /* Tab colors */
@@ -675,7 +682,10 @@
 const randInt=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
 function sample(arr,n){const a=[...arr];let i=a.length;while(i--){const j=randInt(0,i);[a[i],a[j]]=[a[j],a[i]]}return a.slice(0,n)}
 const getBallColor=n=>['#D32F2F','#2E7D32','#F57C00','#F9A825','#1565C0'][Math.min(Math.floor(n/10),4)];
-const JO_COLORS={1:'#22c55e',2:'#f97316',3:'#facc15',4:'#3b82f6',5:'#a85d22'};
+/* 조 색상: CSS --jo1~5 변수와 동기화 (단일 진실 원천) */
+const _root=document.documentElement;
+const _gv=(v)=>getComputedStyle(_root).getPropertyValue(v).trim();
+const JO_COLORS={1:_gv('--jo1'),2:_gv('--jo2'),3:_gv('--jo3'),4:_gv('--jo4'),5:_gv('--jo5')};
 const NUM_COLORS={0:'#F472B6',1:'#F472B6',2:'#38BDF8',3:'#334155',4:'#334155',5:'#EF4444',6:'#EF4444',7:'#8B5CF6',8:'#8B5CF6',9:'#38BDF8'};
 
 function parseInput(text){
@@ -1147,20 +1157,12 @@ document.getElementById('clear-history-btn').addEventListener('click',function()
    ※ 이후 신규 회차는 아래 '회차 추가' 기능으로 직접 누적 가능
 ═══════════════════════════════════════ */
 
-/* 로또 1-1223회 전체 번호별 출현 횟수 (본 번호 기준) */
-/* ═══════════════════════════════════════
-   동행복권 전체 회차 자동 수집 시스템
-   ─────────────────────────────────────
-   · 로또:     1 ~ 현재 회차 (매주 토 20:45 추첨)
-   · 연금복권: 1 ~ 현재 회차 (매주 목 19:05 추첨)
-   · CORS 프록시 경유 자동 수집 → localStorage 영구 누적
-   · 추첨 후 최신 회차 자동 갱신
-═══════════════════════════════════════ */
+/* ═══ STATS & 데이터 로더 ═══
+   data/lotto.json, data/pension.json 기반 통계
+   매주 수동 업데이트 후 GitHub에 업로드
+═══ */
 
-/* ── localStorage 캐시 키 ── */
-/* 캐시 키/함수는 아래 JSON 로더에서 정의 */
-
-/* ── 최신 회차 계산 ── */
+/* ── localStorage 캐시 키 (JSON 로더 섹션에서 정의) ── */
 /* 회차 기준: 실제 캐시 데이터의 latestRound 사용 */
 
 /* ── 단건 fetch (CORS 프록시 이중화) ── */
@@ -1180,6 +1182,11 @@ const LS_PENSION_META = 'pension_meta_v1';
 function loadDrwCache(key){ try{return JSON.parse(localStorage.getItem(key)||'{}')}catch{return{}} }
 function saveDrwCache(key,data){ try{localStorage.setItem(key,JSON.stringify(data))}catch(e){console.warn('캐시 저장 실패',e)} }
 
+/* ── 세션 내 연산 결과 캐시 (JSON 새로고침 시 자동 무효화) ── */
+const _SC={lotto:null,pension:null};   // calcStats 캐시
+const _WC={lotto:null,pension:null};   // buildWeights 캐시
+function _invalidateCache(type){ _SC[type]=null; _WC[type]=null; }
+
 /* JSON 파일 fetch → localStorage 캐시 업데이트 */
 async function refreshFromJson(type){
   const url   = type==='lotto'?JSON_LOTTO:JSON_PENSION;
@@ -1196,6 +1203,7 @@ async function refreshFromJson(type){
       total:   json.total||Object.keys(draws).length,
       latestDrw: json.latest_drw||0
     }));
+    _invalidateCache(type); // 새 데이터 로드 시 연산 캐시 초기화
     return{ok:true, total:Object.keys(draws).length, updated:json.updated||''};
   }catch(e){
     console.warn(type+' JSON 로드 실패:', e);
@@ -1282,6 +1290,7 @@ function renderAutoUpdateCard(el, type){
 
 /* ── 캐시에서 로또 통계 계산 ── */
 function calcLottoStatsFromCache(){
+  if(_SC.lotto) return _SC.lotto;
   const cache=loadDrwCache(LS_LOTTO_KEY);
   const allDraws=Object.entries(cache)
     .sort((a,b)=>Number(a[0])-Number(b[0]))
@@ -1333,13 +1342,15 @@ function calcLottoStatsFromCache(){
   const avgSpan=totalDraws?+(sumSpan/totalDraws).toFixed(1):30;
   const consecPct=totalDraws?+(consecCnt/totalDraws*100).toFixed(1):64.8;
 
-  return{entries,hot,cold,bands,oddPct,evenPct:+(100-oddPct).toFixed(1),
+  const _r={entries,hot,cold,bands,oddPct,evenPct:+(100-oddPct).toFixed(1),
          totalDraws,latestRound,avgSum,sumStd,avgSpan,consecPct,
          allFreq:freq,recentFreq,midFreq,lastSeen,hasSufficient:totalDraws>0};
+  _SC.lotto=_r; return _r;
 }
 
 /* ── 캐시에서 연금복권 통계 계산 (다기간 분석 포함) ── */
 function calcPensionStatsFromCache(){
+  if(_SC.pension) return _SC.pension;
   const cache=loadDrwCache(LS_PENSION_KEY);
   const allDraws=Object.entries(cache)
     .sort((a,b)=>Number(a[0])-Number(b[0]))
@@ -1382,8 +1393,9 @@ function calcPensionStatsFromCache(){
   digitByPos.forEach(p=>Object.entries(p).forEach(([d,cv])=>digitTotal[d]+=cv));
   const totalDigits=Object.values(digitTotal).reduce((a,b)=>a+b,0)||1;
   const digitStats=Object.entries(digitTotal).map(([d,cv])=>({d:String(d),pct:+(cv/totalDigits*100).toFixed(1),count:cv}));
-  return{joFreq,digitStats,digitByPos,recentDigitByPos,lastSeenByPos,posStats,sumBands,
+  const _pr={joFreq,digitStats,digitByPos,recentDigitByPos,lastSeenByPos,posStats,sumBands,
          totalDraws,latestRound,avgSum,sumStd,hasSufficient:totalDraws>0};
+  _SC.pension=_pr; return _pr;
 }
 
 function appendUserStatsTitle(el, type){
@@ -1716,6 +1728,7 @@ const LOTTO_COLD=[22,9,21,30,20,28,26,41,33,39,13,31,37,16,44];
    전체빈도 40% + 최근50회 35% + 중기100회 15% + 미출현점수 10%
    → buildLottoWeights()가 호출될 때마다 실제 데이터로 재계산 */
 function buildLottoWeights(){
+  if(_WC.lotto) return _WC.lotto;
   const s=calcLottoStatsFromCache();
   if(!s.hasSufficient||s.totalDraws<50){
     const w={};
@@ -1756,7 +1769,7 @@ function buildLottoWeights(){
 
   /* hot/mid/cold: 복합 점수 기준 정렬 */
   const sortedByComposite=Array.from({length:45},(_,i)=>i+1).sort((a,b)=>composite[b]-composite[a]);
-  return{
+  _WC.lotto={
     weights:composite,
     hot:sortedByComposite.slice(0,15),
     mid:sortedByComposite.slice(15,30),
@@ -1764,11 +1777,13 @@ function buildLottoWeights(){
     avgSum:s.avgSum,sumStd:s.sumStd||26,avgSpan:s.avgSpan||30,
     overdue,fromCache:true
   };
+  return _WC.lotto;
 }
 
 /* 연금복권 자리별 다기간 복합 가중치
    전체빈도 45% + 최근50회 40% + 미출현점수 15% */
 function buildPensionWeights(){
+  if(_WC.pension) return _WC.pension;
   const ps=calcPensionStatsFromCache();
   if(!ps.hasSufficient||ps.totalDraws<30){
     return{posHot:null,posWeights:null,avgSum:27.5,sumStd:7,fromCache:false};
@@ -1795,7 +1810,8 @@ function buildPensionWeights(){
     return w;
   });
   const posHot=posWeights.map(w=>Object.entries(w).sort((a,b)=>b[1]-a[1]).map(e=>Number(e[0])));
-  return{posHot,posWeights,avgSum:ps.avgSum,sumStd:ps.sumStd||7,fromCache:true};
+  _WC.pension={posHot,posWeights,avgSum:ps.avgSum,sumStd:ps.sumStd||7,fromCache:true};
+  return _WC.pension;
 }
 
 /* 가중 랜덤 샘플링 */
@@ -2139,8 +2155,8 @@ function getNextDrawTime(dayOfWeek, h, m) {
 }
 function updateCountdown(){
   const now = new Date();
-  const lotto  = getNextDrawTime(6, 20, 45); // 토 20:45
-  const pension = getNextDrawTime(4, 19,  5); // 목 19:05
+  const lotto  = getNextDrawTime(6, 20, 45); // 토 20:45 KST
+  const pension = getNextDrawTime(4, 19,  5); // 목 19:05 KST
   const fmt = (diff, dId, hId, mId, sId) => {
     diff = Math.max(0, diff);
     document.getElementById(dId).textContent = String(Math.floor(diff/86400000)).padStart(2,'0');
