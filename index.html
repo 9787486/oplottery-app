@@ -238,24 +238,41 @@
     .official-stats-title{font-size:12px;font-weight:900;color:var(--c-stats);letter-spacing:.8px;margin-bottom:4px;display:flex;align-items:center;gap:6px}
     .official-stats-sub{font-size:10px;color:var(--sub);margin-bottom:13px}
     /* ── 최근 당첨번호 카드 ── */
-    .recent-draws-card{background:linear-gradient(135deg,rgba(248,113,113,.05),var(--card));border:1px solid rgba(248,113,113,.22);border-radius:var(--radius);padding:14px 15px;margin-bottom:13px}
-    .recent-draws-card.pension{background:linear-gradient(135deg,rgba(16,185,129,.05),var(--card));border-color:rgba(16,185,129,.22)}
-    .recent-draws-title{font-size:12px;font-weight:900;letter-spacing:.8px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
-    .recent-draws-title span:first-child{color:var(--c-lotto)}
-    .recent-draws-card.pension .recent-draws-title span:first-child{color:var(--c-pension)}
-    .rd-more-btn{font-size:10px;color:var(--sub);background:none;border:1px solid var(--border);border-radius:6px;padding:2px 8px;cursor:pointer;font-family:inherit;transition:color .15s,border-color .15s}
-    .rd-more-btn:hover{color:var(--text);border-color:var(--sub)}
-    .recent-draw-row{display:flex;align-items:center;gap:7px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)}
-    .recent-draw-row:last-child{border-bottom:none;padding-bottom:0}
-    .recent-draw-round{font-size:10px;font-weight:700;color:var(--sub);min-width:36px;flex-shrink:0;font-family:'JetBrains Mono',monospace}
-    .recent-draw-balls{display:flex;align-items:center;gap:3px;flex:1;flex-wrap:nowrap}
-    .rd-lball{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0;font-family:'JetBrains Mono',monospace}
-    .rd-lball.bonus{opacity:.7;position:relative}
-    .rd-lball.bonus::after{content:'B';position:absolute;top:-3px;right:-3px;font-size:7px;background:var(--c-history);border-radius:3px;padding:0 2px;opacity:1}
-    .rd-plus{color:var(--sub);font-size:10px;margin:0 1px;flex-shrink:0}
-    .rd-jo{padding:0 5px;height:20px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0;white-space:nowrap}
-    .rd-digit{width:20px;height:22px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--text);flex-shrink:0;font-family:'JetBrains Mono',monospace}
-    .rd-date{font-size:9px;color:var(--sub);margin-left:auto;flex-shrink:0;white-space:nowrap}
+    /* ── 최근 당첨번호 카드 (전면 재설계) ── */
+    .rd-card{background:var(--card);border:1.5px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:13px;overflow:hidden}
+    .rd-card.lotto{border-color:rgba(244,63,94,.3);background:linear-gradient(135deg,rgba(244,63,94,.06),var(--card))}
+    .rd-card.pension{border-color:rgba(16,185,129,.3);background:linear-gradient(135deg,rgba(16,185,129,.06),var(--card))}
+    .rd-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+    .rd-header-title{font-size:12px;font-weight:900;letter-spacing:.6px}
+    .rd-card.lotto .rd-header-title{color:var(--c-lotto)}
+    .rd-card.pension .rd-header-title{color:var(--c-pension)}
+    /* 최신 회차 히어로 영역 */
+    .rd-hero{background:rgba(0,0,0,.2);border-radius:10px;padding:14px 14px 12px;margin-bottom:12px}
+    .rd-hero-meta{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+    .rd-hero-round{font-size:16px;font-weight:900;color:var(--text)}
+    .rd-hero-date{font-size:11px;color:var(--sub);background:rgba(255,255,255,.06);padding:2px 8px;border-radius:20px}
+    .rd-hero-latest{font-size:9px;font-weight:700;color:#fff;background:var(--c-lotto);padding:2px 7px;border-radius:20px;letter-spacing:.5px}
+    .rd-card.pension .rd-hero-latest{background:var(--c-pension)}
+    /* 공 / 숫자 - 히어로 크기 */
+    .rd-balls{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+    .rd-ball{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;color:#fff;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.35);font-family:'JetBrains Mono',monospace,sans-serif}
+    .rd-ball.bonus{opacity:.75;box-shadow:none}
+    .rd-separator{color:var(--sub);font-size:14px;font-weight:700;margin:0 2px}
+    .rd-jo-chip{height:36px;min-width:48px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.3)}
+    .rd-dbox{width:38px;height:42px;background:rgba(255,255,255,.07);border:1.5px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;flex-shrink:0;font-family:'JetBrains Mono',monospace,sans-serif}
+    /* 검색 영역 */
+    .rd-search{display:flex;gap:8px;align-items:center}
+    .rd-search-input{flex:1;background:rgba(255,255,255,.06);border:1.5px solid var(--border);border-radius:9px;padding:9px 13px;color:var(--text);font-size:13px;font-family:inherit;outline:none;transition:border-color .2s}
+    .rd-search-input:focus{border-color:var(--c-stats)}
+    .rd-search-input::placeholder{color:var(--sub)}
+    .rd-search-btn{padding:9px 16px;border-radius:9px;border:none;background:var(--c-stats);color:#0f172a;font-size:12px;font-weight:900;cursor:pointer;font-family:inherit;white-space:nowrap;transition:opacity .15s}
+    .rd-search-btn:hover{opacity:.85}
+    .rd-result{margin-top:10px;background:rgba(0,0,0,.15);border-radius:10px;padding:12px 14px;display:none}
+    .rd-result.show{display:block}
+    .rd-result-meta{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+    .rd-result-round{font-size:14px;font-weight:900;color:var(--text)}
+    .rd-result-date{font-size:11px;color:var(--sub)}
+    .rd-not-found{text-align:center;padding:10px 0;color:var(--sub);font-size:13px}
     .ostats-section{margin-bottom:12px}
     .ostats-label{font-size:10px;font-weight:700;color:var(--sub);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
     .ostats-balls{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
@@ -1403,116 +1420,130 @@ function appendUserStatsTitle(el, type){
 /* ── 역대 공식 통계 카드 렌더링 ── */
 /* ── 최근 당첨번호 카드 렌더링 ── */
 function renderRecentDraws(el, type){
-  const cKey = type==='lotto'?LS_LOTTO_KEY:LS_PENSION_KEY;
-  const cache = loadDrwCache(cKey);
+  const cKey   = type==='lotto' ? LS_LOTTO_KEY : LS_PENSION_KEY;
+  const cache  = loadDrwCache(cKey);
   const allKeys = Object.keys(cache).map(Number).sort((a,b)=>b-a);
   if(!allKeys.length) return;
 
-  const SHOW_DEFAULT = 10;
-  const SHOW_MORE    = 30;
-  let showCount = SHOW_DEFAULT;
+  const isLotto   = type==='lotto';
+  const accentCls = isLotto ? 'lotto' : 'pension';
+  const titleText = isLotto ? '🎱 로또 최근 당첨번호' : '💰 연금복권 최근 당첨번호';
+  const maxRound  = allKeys[0];
 
-  const card = document.createElement('div');
-  card.className = 'recent-draws-card' + (type==='pension'?' pension':'');
-
-  const titleRow = document.createElement('div');
-  titleRow.className = 'recent-draws-title';
-  const titleTxt = document.createElement('span');
-  titleTxt.textContent = type==='lotto' ? '📅 로또 최근 당첨번호' : '📅 연금복권 최근 당첨번호';
-  const moreBtn = document.createElement('button');
-  moreBtn.className = 'rd-more-btn';
-  moreBtn.textContent = `더 보기 (${Math.min(SHOW_MORE,allKeys.length)}회차)`;
-  titleRow.appendChild(titleTxt); titleRow.appendChild(moreBtn);
-  card.appendChild(titleRow);
-
-  const list = document.createElement('div');
-  card.appendChild(list);
-
-  function renderList(){
-    list.innerHTML='';
-    allKeys.slice(0, showCount).forEach(drwNo=>{
-      const d = cache[String(drwNo)];
-      if(!d || !d.nums) return;
-
-      const row = document.createElement('div');
-      row.className = 'recent-draw-row';
-
-      /* 회차 */
-      const roundEl = document.createElement('div');
-      roundEl.className = 'recent-draw-round';
-      roundEl.textContent = drwNo+'회';
-      row.appendChild(roundEl);
-
-      /* 번호 영역 */
-      const ballsEl = document.createElement('div');
-      ballsEl.className = 'recent-draw-balls';
-
-      if(type==='lotto'){
-        const sorted = [...d.nums].sort((a,b)=>a-b);
-        sorted.forEach(n=>{
-          const b = document.createElement('div');
-          b.className = 'rd-lball';
-          b.style.background = getBallColor(n);
-          b.textContent = String(n).padStart(2,'0');
-          ballsEl.appendChild(b);
-        });
-        if(d.bonus !== undefined && d.bonus !== null){
-          const plus = document.createElement('span');
-          plus.className = 'rd-plus'; plus.textContent = '+';
-          ballsEl.appendChild(plus);
-          const bon = document.createElement('div');
-          bon.className = 'rd-lball bonus';
-          bon.style.background = getBallColor(d.bonus);
-          bon.textContent = String(d.bonus).padStart(2,'0');
-          ballsEl.appendChild(bon);
-        }
-      } else {
-        /* 연금복권: 조 chip + 6자리 */
-        if(d.jo){
-          const jo = document.createElement('div');
-          jo.className = 'rd-jo';
-          jo.style.background = JO_COLORS[d.jo] || '#334155';
-          jo.textContent = d.jo+'조';
-          ballsEl.appendChild(jo);
-        }
-        d.nums.forEach(n=>{
-          const box = document.createElement('div');
-          box.className = 'rd-digit';
-          box.style.color = NUM_COLORS[n] || 'var(--text)';
-          box.textContent = n;
-          ballsEl.appendChild(box);
-        });
+  /* 공통: 번호 렌더링 헬퍼 */
+  function makeBalls(d, container){
+    if(isLotto){
+      const sorted=[...d.nums].sort((a,b)=>a-b);
+      sorted.forEach(n=>{
+        const b=document.createElement('div');
+        b.className='rd-ball';
+        b.style.background=getBallColor(n);
+        b.textContent=String(n).padStart(2,'0');
+        container.appendChild(b);
+      });
+      if(d.bonus!=null){
+        const sep=document.createElement('span');
+        sep.className='rd-separator'; sep.textContent='+';
+        container.appendChild(sep);
+        const bon=document.createElement('div');
+        bon.className='rd-ball bonus';
+        bon.style.background=getBallColor(d.bonus);
+        bon.textContent=String(d.bonus).padStart(2,'0');
+        container.appendChild(bon);
       }
-      row.appendChild(ballsEl);
-
-      /* 날짜 (있을 때만) */
-      if(d.date){
-        const dateEl = document.createElement('div');
-        dateEl.className = 'rd-date';
-        dateEl.textContent = d.date;
-        row.appendChild(dateEl);
+    } else {
+      if(d.jo){
+        const jo=document.createElement('div');
+        jo.className='rd-jo-chip';
+        jo.style.background=JO_COLORS[d.jo]||'#334155';
+        jo.textContent=d.jo+'조';
+        container.appendChild(jo);
       }
-
-      list.appendChild(row);
-    });
+      d.nums.forEach(n=>{
+        const box=document.createElement('div');
+        box.className='rd-dbox';
+        box.style.color=NUM_COLORS[n]||'var(--text)';
+        box.textContent=n;
+        container.appendChild(box);
+      });
+    }
   }
 
-  moreBtn.addEventListener('click',()=>{
-    if(showCount === SHOW_DEFAULT){
-      showCount = Math.min(SHOW_MORE, allKeys.length);
-      moreBtn.textContent = '접기 ↑';
-    } else {
-      showCount = SHOW_DEFAULT;
-      moreBtn.textContent = `더 보기 (${Math.min(SHOW_MORE,allKeys.length)}회차)`;
-      card.scrollIntoView({behavior:'smooth',block:'start'});
+  /* 카드 */
+  const card=document.createElement('div');
+  card.className=`rd-card ${accentCls}`;
+
+  /* 헤더 */
+  const header=document.createElement('div');
+  header.className='rd-header';
+  header.innerHTML=`<span class="rd-header-title">${titleText}</span>`;
+  card.appendChild(header);
+
+  /* ① 최신 1회차 히어로 영역 */
+  const latestData=cache[String(maxRound)];
+  if(latestData && latestData.nums){
+    const hero=document.createElement('div');
+    hero.className='rd-hero';
+    const meta=document.createElement('div');
+    meta.className='rd-hero-meta';
+    meta.innerHTML=`<span class="rd-hero-round">${maxRound}회</span>`
+      +`<span class="rd-hero-latest">최신</span>`
+      +(latestData.date?`<span class="rd-hero-date">${latestData.date}</span>`:'');
+    hero.appendChild(meta);
+    const balls=document.createElement('div');
+    balls.className='rd-balls';
+    makeBalls(latestData, balls);
+    hero.appendChild(balls);
+    card.appendChild(hero);
+  }
+
+  /* ② 회차 검색 */
+  const searchWrap=document.createElement('div');
+  searchWrap.className='rd-search';
+  const inp=document.createElement('input');
+  inp.type='number';
+  inp.className='rd-search-input';
+  inp.placeholder=`회차 검색 (1 ~ ${maxRound})`;
+  inp.min=1; inp.max=maxRound;
+  const btn=document.createElement('button');
+  btn.className='rd-search-btn';
+  btn.textContent='조회';
+  searchWrap.appendChild(inp);
+  searchWrap.appendChild(btn);
+  card.appendChild(searchWrap);
+
+  /* ③ 검색 결과 영역 */
+  const result=document.createElement('div');
+  result.className='rd-result';
+  card.appendChild(result);
+
+  function doSearch(){
+    const no=parseInt(inp.value,10);
+    result.innerHTML='';
+    if(!no || no<1 || no>maxRound){
+      result.innerHTML=`<div class="rd-not-found">❌ 1 ~ ${maxRound} 범위의 회차를 입력해주세요</div>`;
+      result.classList.add('show'); return;
     }
-    renderList();
-  });
+    const d=cache[String(no)];
+    if(!d||!d.nums){
+      result.innerHTML=`<div class="rd-not-found">⚠️ ${no}회차 데이터가 없습니다</div>`;
+      result.classList.add('show'); return;
+    }
+    const meta=document.createElement('div');
+    meta.className='rd-result-meta';
+    meta.innerHTML=`<span class="rd-result-round">${no}회</span>`
+      +(d.date?`<span class="rd-result-date">${d.date}</span>`:'');
+    const balls=document.createElement('div');
+    balls.className='rd-balls';
+    makeBalls(d, balls);
+    result.appendChild(meta);
+    result.appendChild(balls);
+    result.classList.add('show');
+  }
 
-  /* 더보기 버튼 숨김: 전체 회차가 SHOW_DEFAULT 이하이면 불필요 */
-  if(allKeys.length <= SHOW_DEFAULT) moreBtn.style.display='none';
+  btn.addEventListener('click', doSearch);
+  inp.addEventListener('keydown', e=>{ if(e.key==='Enter') doSearch(); });
 
-  renderList();
   el.appendChild(card);
 }
 
