@@ -8,12 +8,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="원피스복권" />
-<meta property="og:type"        content="website" />
-<meta property="og:title"       content="원피스복권 번호 생성기" />
-<meta property="og:description" content="로또 6/45 & 연금복권 720+ AI 번호 생성기. 동행복권 역대 통계 기반 공격/균형/안정 전략." />
-<meta property="og:image"       content="icon-1024.png" />
-<meta name="twitter:card"       content="summary" />
-<meta name="twitter:title"      content="원피스복권 번호 생성기" />
+<meta property="og:type"         content="website" />
+<meta property="og:title"        content="원피스복권 번호 생성기" />
+<meta property="og:description"  content="로또 6/45 & 연금복권 720+ AI 번호 생성기. 동행복권 역대 통계 기반 공격/균형/안정 전략." />
+<meta property="og:image"        content="icon-1024.png" />
+<meta name="twitter:card"        content="summary" />
+<meta name="twitter:title"       content="원피스복권 번호 생성기" />
 <meta name="twitter:description" content="로또·연금복권 AI 번호 생성 & 통계 분석 앱" />
   <title>원피스복권 번호 생성기</title>
   <link rel="manifest" href="manifest.json" />
@@ -237,6 +237,25 @@
     .official-stats-card{background:linear-gradient(135deg,rgba(6,182,212,.06),var(--card));border:1px solid rgba(6,182,212,.25);border-radius:var(--radius);padding:15px 16px;margin-bottom:13px}
     .official-stats-title{font-size:12px;font-weight:900;color:var(--c-stats);letter-spacing:.8px;margin-bottom:4px;display:flex;align-items:center;gap:6px}
     .official-stats-sub{font-size:10px;color:var(--sub);margin-bottom:13px}
+    /* ── 최근 당첨번호 카드 ── */
+    .recent-draws-card{background:linear-gradient(135deg,rgba(248,113,113,.05),var(--card));border:1px solid rgba(248,113,113,.22);border-radius:var(--radius);padding:14px 15px;margin-bottom:13px}
+    .recent-draws-card.pension{background:linear-gradient(135deg,rgba(16,185,129,.05),var(--card));border-color:rgba(16,185,129,.22)}
+    .recent-draws-title{font-size:12px;font-weight:900;letter-spacing:.8px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+    .recent-draws-title span:first-child{color:var(--c-lotto)}
+    .recent-draws-card.pension .recent-draws-title span:first-child{color:var(--c-pension)}
+    .rd-more-btn{font-size:10px;color:var(--sub);background:none;border:1px solid var(--border);border-radius:6px;padding:2px 8px;cursor:pointer;font-family:inherit;transition:color .15s,border-color .15s}
+    .rd-more-btn:hover{color:var(--text);border-color:var(--sub)}
+    .recent-draw-row{display:flex;align-items:center;gap:7px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+    .recent-draw-row:last-child{border-bottom:none;padding-bottom:0}
+    .recent-draw-round{font-size:10px;font-weight:700;color:var(--sub);min-width:36px;flex-shrink:0;font-family:'JetBrains Mono',monospace}
+    .recent-draw-balls{display:flex;align-items:center;gap:3px;flex:1;flex-wrap:nowrap}
+    .rd-lball{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0;font-family:'JetBrains Mono',monospace}
+    .rd-lball.bonus{opacity:.7;position:relative}
+    .rd-lball.bonus::after{content:'B';position:absolute;top:-3px;right:-3px;font-size:7px;background:var(--c-history);border-radius:3px;padding:0 2px;opacity:1}
+    .rd-plus{color:var(--sub);font-size:10px;margin:0 1px;flex-shrink:0}
+    .rd-jo{padding:0 5px;height:20px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0;white-space:nowrap}
+    .rd-digit{width:20px;height:22px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--text);flex-shrink:0;font-family:'JetBrains Mono',monospace}
+    .rd-date{font-size:9px;color:var(--sub);margin-left:auto;flex-shrink:0;white-space:nowrap}
     .ostats-section{margin-bottom:12px}
     .ostats-label{font-size:10px;font-weight:700;color:var(--sub);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
     .ostats-balls{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
@@ -682,7 +701,6 @@
 const randInt=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
 function sample(arr,n){const a=[...arr];let i=a.length;while(i--){const j=randInt(0,i);[a[i],a[j]]=[a[j],a[i]]}return a.slice(0,n)}
 const getBallColor=n=>['#D32F2F','#2E7D32','#F57C00','#F9A825','#1565C0'][Math.min(Math.floor(n/10),4)];
-/* 조 색상: CSS --jo1~5 변수와 동기화 (단일 진실 원천) */
 const _root=document.documentElement;
 const _gv=(v)=>getComputedStyle(_root).getPropertyValue(v).trim();
 const JO_COLORS={1:_gv('--jo1'),2:_gv('--jo2'),3:_gv('--jo3'),4:_gv('--jo4'),5:_gv('--jo5')};
@@ -876,12 +894,7 @@ function generateLotto(){
       lottoResults=[];
       for(let i=0;i<5;i++){
         const pool=Array.from({length:45},(_,k)=>k+1).filter(n=>!eSet.has(n)&&!mSet.has(n));
-        let drawn;
-        if(bfc&&pool.length>=(6-mSet.size)){
-          drawn=weightedSample(pool,BW,6-mSet.size);
-        }else{
-          drawn=sample(pool,6-mSet.size);
-        }
+        const drawn=bfc&&pool.length>=(6-mSet.size)?weightedSample(pool,BW,6-mSet.size):sample(pool,6-mSet.size);
         const picks=[...mSet,...drawn].sort((a,b)=>a-b);
         const bonus=picks[randInt(0,picks.length-1)];
         lottoResults.push({picks,bonus});
@@ -1157,19 +1170,27 @@ document.getElementById('clear-history-btn').addEventListener('click',function()
    ※ 이후 신규 회차는 아래 '회차 추가' 기능으로 직접 누적 가능
 ═══════════════════════════════════════ */
 
-/* ═══ STATS & 데이터 로더 ═══
-   data/lotto.json, data/pension.json 기반 통계
-   매주 수동 업데이트 후 GitHub에 업로드
-═══ */
+/* 로또 1-1223회 전체 번호별 출현 횟수 (본 번호 기준) */
+/* ═══════════════════════════════════════
+   동행복권 전체 회차 자동 수집 시스템
+   ─────────────────────────────────────
+   · 로또:     1 ~ 현재 회차 (매주 토 20:45 추첨)
+   · 연금복권: 1 ~ 현재 회차 (매주 목 19:05 추첨)
+   · CORS 프록시 경유 자동 수집 → localStorage 영구 누적
+   · 추첨 후 최신 회차 자동 갱신
+═══════════════════════════════════════ */
 
-/* ── localStorage 캐시 키 (JSON 로더 섹션에서 정의) ── */
+/* ── localStorage 캐시 키 ── */
+/* 캐시 키/함수는 아래 JSON 로더에서 정의 */
+
+/* ── 최신 회차 계산 ── */
 /* 회차 기준: 실제 캐시 데이터의 latestRound 사용 */
 
 /* ── 단건 fetch (CORS 프록시 이중화) ── */
 /* ═══ JSON 데이터 로더 ═══
    data/lotto.json, data/pension.json 을 읽어
    localStorage 에 캐싱 → 통계에 반영
-   매주 새 회차를 수기 입력 후 GitHub에 업로드
+   매주 새 회차 수기 입력 후 GitHub에 업로드
 ════════════════════════════════════════ */
 
 const JSON_LOTTO   = './data/lotto.json';
@@ -1181,10 +1202,9 @@ const LS_PENSION_META = 'pension_meta_v1';
 
 function loadDrwCache(key){ try{return JSON.parse(localStorage.getItem(key)||'{}')}catch{return{}} }
 function saveDrwCache(key,data){ try{localStorage.setItem(key,JSON.stringify(data))}catch(e){console.warn('캐시 저장 실패',e)} }
-
-/* ── 세션 내 연산 결과 캐시 (JSON 새로고침 시 자동 무효화) ── */
-const _SC={lotto:null,pension:null};   // calcStats 캐시
-const _WC={lotto:null,pension:null};   // buildWeights 캐시
+/* 세션 내 연산 결과 캐시 (JSON 새로고침 시 자동 무효화) */
+const _SC={lotto:null,pension:null};
+const _WC={lotto:null,pension:null};
 function _invalidateCache(type){ _SC[type]=null; _WC[type]=null; }
 
 /* JSON 파일 fetch → localStorage 캐시 업데이트 */
@@ -1203,7 +1223,7 @@ async function refreshFromJson(type){
       total:   json.total||Object.keys(draws).length,
       latestDrw: json.latest_drw||0
     }));
-    _invalidateCache(type); // 새 데이터 로드 시 연산 캐시 초기화
+    _invalidateCache(type);
     return{ok:true, total:Object.keys(draws).length, updated:json.updated||''};
   }catch(e){
     console.warn(type+' JSON 로드 실패:', e);
@@ -1292,30 +1312,19 @@ function renderAutoUpdateCard(el, type){
 function calcLottoStatsFromCache(){
   if(_SC.lotto) return _SC.lotto;
   const cache=loadDrwCache(LS_LOTTO_KEY);
-  const allDraws=Object.entries(cache)
-    .sort((a,b)=>Number(a[0])-Number(b[0]))
-    .map(([,v])=>v)
-    .filter(d=>Array.isArray(d.nums)&&d.nums.length===6);
+  const allDraws=Object.entries(cache).sort((a,b)=>Number(a[0])-Number(b[0])).map(([,v])=>v).filter(d=>Array.isArray(d.nums)&&d.nums.length===6);
   const totalDraws=allDraws.length;
-  const drwKeys=Object.keys(cache).map(Number);
-  const latestRound=drwKeys.length?Math.max(...drwKeys):0;
-
-  /* 전체 빈도 */
+  const latestRound=Object.keys(cache).map(Number).reduce((a,b)=>Math.max(a,b),0);
   const freq=Object.fromEntries(Array.from({length:45},(_,i)=>[i+1,0]));
   allDraws.forEach(({nums})=>nums.forEach(n=>{if(freq[n]!==undefined)freq[n]++}));
   const total=Object.values(freq).reduce((a,b)=>a+b,0)||1;
-  const entries=Object.entries(freq).map(([n,c])=>[Number(n),c]).sort((a,b)=>b[1]-a[1]);
-
-  /* 최근 50/100회 빈도 */
+  const entries=Object.entries(freq).map(([n,cv])=>[Number(n),cv]).sort((a,b)=>b[1]-a[1]);
   const recentFreq=Object.fromEntries(Array.from({length:45},(_,i)=>[i+1,0]));
   allDraws.slice(-50).forEach(({nums})=>nums.forEach(n=>{if(recentFreq[n]!==undefined)recentFreq[n]++}));
   const midFreq=Object.fromEntries(Array.from({length:45},(_,i)=>[i+1,0]));
   allDraws.slice(-100).forEach(({nums})=>nums.forEach(n=>{if(midFreq[n]!==undefined)midFreq[n]++}));
-
-  /* 마지막 출현 회차 */
   const lastSeen=Object.fromEntries(Array.from({length:45},(_,i)=>[i+1,0]));
   allDraws.forEach(({nums},idx)=>nums.forEach(n=>{lastSeen[n]=idx+1}));
-
   const hot=entries.slice(0,10);
   const cold=entries.slice(-10).reverse();
   const bands=[
@@ -1325,10 +1334,8 @@ function calcLottoStatsFromCache(){
     {label:'28 ~ 36',nums:Array.from({length:9},(_,i)=>i+28), color:'#94a3b8'},
     {label:'37 ~ 45',nums:Array.from({length:9},(_,i)=>i+37), color:'#b45309'},
   ].map(b=>({...b,pct:+(b.nums.reduce((s,n)=>s+(freq[n]||0),0)/total*100).toFixed(1)}));
-  const odd=entries.filter(([n])=>n%2===1).reduce((s,[,c])=>s+c,0);
+  const odd=entries.filter(([n])=>n%2===1).reduce((s,[,cv])=>s+cv,0);
   const oddPct=total>0?+(odd/total*100).toFixed(1):0;
-
-  /* 합산·스팬·연속번호 통계 */
   let sumSum=0,sumSpan=0,consecCnt=0;const sumList=[];
   allDraws.forEach(({nums})=>{
     const sorted=[...nums].sort((a,b)=>a-b);
@@ -1341,24 +1348,19 @@ function calcLottoStatsFromCache(){
   const sumStd=totalDraws?+Math.sqrt(sumVar).toFixed(1):26;
   const avgSpan=totalDraws?+(sumSpan/totalDraws).toFixed(1):30;
   const consecPct=totalDraws?+(consecCnt/totalDraws*100).toFixed(1):64.8;
-
   const _r={entries,hot,cold,bands,oddPct,evenPct:+(100-oddPct).toFixed(1),
-         totalDraws,latestRound,avgSum,sumStd,avgSpan,consecPct,
-         allFreq:freq,recentFreq,midFreq,lastSeen,hasSufficient:totalDraws>0};
+    totalDraws,latestRound,avgSum,sumStd,avgSpan,consecPct,
+    allFreq:freq,recentFreq,midFreq,lastSeen,hasSufficient:totalDraws>0};
   _SC.lotto=_r; return _r;
 }
 
-/* ── 캐시에서 연금복권 통계 계산 (다기간 분석 포함) ── */
+/* ── 캐시에서 연금복권 통계 계산 (다기간 분석) ── */
 function calcPensionStatsFromCache(){
   if(_SC.pension) return _SC.pension;
   const cache=loadDrwCache(LS_PENSION_KEY);
-  const allDraws=Object.entries(cache)
-    .sort((a,b)=>Number(a[0])-Number(b[0]))
-    .map(([,v])=>v)
-    .filter(d=>Array.isArray(d.nums)&&d.nums.length===6);
+  const allDraws=Object.entries(cache).sort((a,b)=>Number(a[0])-Number(b[0])).map(([,v])=>v).filter(d=>Array.isArray(d.nums)&&d.nums.length===6);
   const totalDraws=allDraws.length;
-  const drwKeys=Object.keys(cache).map(Number);
-  const latestRound=drwKeys.length?Math.max(...drwKeys):0;
+  const latestRound=Object.keys(cache).map(Number).reduce((a,b)=>Math.max(a,b),0);
   const joFreq={1:0,2:0,3:0,4:0,5:0};
   const digitByPos=Array.from({length:6},()=>Object.fromEntries(Array.from({length:10},(_,i)=>[i,0])));
   const recentDigitByPos=Array.from({length:6},()=>Object.fromEntries(Array.from({length:10},(_,i)=>[i,0])));
@@ -1367,17 +1369,11 @@ function calcPensionStatsFromCache(){
   allDraws.forEach(({jo,nums},idx)=>{
     if(!nums||!jo) return;
     joFreq[jo]=(joFreq[jo]||0)+1;
-    nums.forEach((d,pos)=>{
-      digitByPos[pos][d]=(digitByPos[pos][d]||0)+1;
-      lastSeenByPos[pos][d]=idx+1;
-    });
+    nums.forEach((d,pos)=>{digitByPos[pos][d]=(digitByPos[pos][d]||0)+1;lastSeenByPos[pos][d]=idx+1});
     const s=nums.reduce((a,b)=>a+b,0);
     sumList.push(s);sumBandCnts[s<=10?0:s<=21?1:s<=32?2:s<=43?3:4]++;
   });
-  allDraws.slice(-50).forEach(({nums})=>{
-    if(!nums) return;
-    nums.forEach((d,pos)=>{recentDigitByPos[pos][d]=(recentDigitByPos[pos][d]||0)+1});
-  });
+  allDraws.slice(-50).forEach(({nums})=>{if(!nums)return;nums.forEach((d,pos)=>{recentDigitByPos[pos][d]=(recentDigitByPos[pos][d]||0)+1})});
   const avgSum=sumList.length?+(sumList.reduce((a,b)=>a+b,0)/sumList.length).toFixed(1):27.5;
   const sumVar=sumList.length?sumList.reduce((a,b)=>a+(b-avgSum)**2,0)/sumList.length:0;
   const sumStd=sumList.length?+Math.sqrt(sumVar).toFixed(1):7;
@@ -1386,7 +1382,7 @@ function calcPensionStatsFromCache(){
   const totalSumDraws=sumBandCnts.reduce((a,b)=>a+b,0)||1;
   const sumBands=sumBandCnts.map((cnt,i)=>({label:SUM_LABELS[i],pct:+(cnt/totalSumDraws*100).toFixed(1),color:SUM_COLORS[i]}));
   const posStats=digitByPos.map((freq,pos)=>{
-    const sorted=Object.entries(freq).map(([d,c])=>({d:Number(d),c})).sort((a,b)=>b.c-a.c);
+    const sorted=Object.entries(freq).map(([d,cv])=>({d:Number(d),c:cv})).sort((a,b)=>b.c-a.c);
     return{pos:pos+1,top:sorted[0],bottom:sorted[sorted.length-1]};
   });
   const digitTotal=Object.fromEntries(Array.from({length:10},(_,i)=>[i,0]));
@@ -1394,7 +1390,7 @@ function calcPensionStatsFromCache(){
   const totalDigits=Object.values(digitTotal).reduce((a,b)=>a+b,0)||1;
   const digitStats=Object.entries(digitTotal).map(([d,cv])=>({d:String(d),pct:+(cv/totalDigits*100).toFixed(1),count:cv}));
   const _pr={joFreq,digitStats,digitByPos,recentDigitByPos,lastSeenByPos,posStats,sumBands,
-         totalDraws,latestRound,avgSum,sumStd,hasSufficient:totalDraws>0};
+    totalDraws,latestRound,avgSum,sumStd,hasSufficient:totalDraws>0};
   _SC.pension=_pr; return _pr;
 }
 
@@ -1405,11 +1401,129 @@ function appendUserStatsTitle(el, type){
 }
 
 /* ── 역대 공식 통계 카드 렌더링 ── */
+/* ── 최근 당첨번호 카드 렌더링 ── */
+function renderRecentDraws(el, type){
+  const cKey = type==='lotto'?LS_LOTTO_KEY:LS_PENSION_KEY;
+  const cache = loadDrwCache(cKey);
+  const allKeys = Object.keys(cache).map(Number).sort((a,b)=>b-a);
+  if(!allKeys.length) return;
+
+  const SHOW_DEFAULT = 10;
+  const SHOW_MORE    = 30;
+  let showCount = SHOW_DEFAULT;
+
+  const card = document.createElement('div');
+  card.className = 'recent-draws-card' + (type==='pension'?' pension':'');
+
+  const titleRow = document.createElement('div');
+  titleRow.className = 'recent-draws-title';
+  const titleTxt = document.createElement('span');
+  titleTxt.textContent = type==='lotto' ? '📅 로또 최근 당첨번호' : '📅 연금복권 최근 당첨번호';
+  const moreBtn = document.createElement('button');
+  moreBtn.className = 'rd-more-btn';
+  moreBtn.textContent = `더 보기 (${Math.min(SHOW_MORE,allKeys.length)}회차)`;
+  titleRow.appendChild(titleTxt); titleRow.appendChild(moreBtn);
+  card.appendChild(titleRow);
+
+  const list = document.createElement('div');
+  card.appendChild(list);
+
+  function renderList(){
+    list.innerHTML='';
+    allKeys.slice(0, showCount).forEach(drwNo=>{
+      const d = cache[String(drwNo)];
+      if(!d || !d.nums) return;
+
+      const row = document.createElement('div');
+      row.className = 'recent-draw-row';
+
+      /* 회차 */
+      const roundEl = document.createElement('div');
+      roundEl.className = 'recent-draw-round';
+      roundEl.textContent = drwNo+'회';
+      row.appendChild(roundEl);
+
+      /* 번호 영역 */
+      const ballsEl = document.createElement('div');
+      ballsEl.className = 'recent-draw-balls';
+
+      if(type==='lotto'){
+        const sorted = [...d.nums].sort((a,b)=>a-b);
+        sorted.forEach(n=>{
+          const b = document.createElement('div');
+          b.className = 'rd-lball';
+          b.style.background = getBallColor(n);
+          b.textContent = String(n).padStart(2,'0');
+          ballsEl.appendChild(b);
+        });
+        if(d.bonus !== undefined && d.bonus !== null){
+          const plus = document.createElement('span');
+          plus.className = 'rd-plus'; plus.textContent = '+';
+          ballsEl.appendChild(plus);
+          const bon = document.createElement('div');
+          bon.className = 'rd-lball bonus';
+          bon.style.background = getBallColor(d.bonus);
+          bon.textContent = String(d.bonus).padStart(2,'0');
+          ballsEl.appendChild(bon);
+        }
+      } else {
+        /* 연금복권: 조 chip + 6자리 */
+        if(d.jo){
+          const jo = document.createElement('div');
+          jo.className = 'rd-jo';
+          jo.style.background = JO_COLORS[d.jo] || '#334155';
+          jo.textContent = d.jo+'조';
+          ballsEl.appendChild(jo);
+        }
+        d.nums.forEach(n=>{
+          const box = document.createElement('div');
+          box.className = 'rd-digit';
+          box.style.color = NUM_COLORS[n] || 'var(--text)';
+          box.textContent = n;
+          ballsEl.appendChild(box);
+        });
+      }
+      row.appendChild(ballsEl);
+
+      /* 날짜 (있을 때만) */
+      if(d.date){
+        const dateEl = document.createElement('div');
+        dateEl.className = 'rd-date';
+        dateEl.textContent = d.date;
+        row.appendChild(dateEl);
+      }
+
+      list.appendChild(row);
+    });
+  }
+
+  moreBtn.addEventListener('click',()=>{
+    if(showCount === SHOW_DEFAULT){
+      showCount = Math.min(SHOW_MORE, allKeys.length);
+      moreBtn.textContent = '접기 ↑';
+    } else {
+      showCount = SHOW_DEFAULT;
+      moreBtn.textContent = `더 보기 (${Math.min(SHOW_MORE,allKeys.length)}회차)`;
+      card.scrollIntoView({behavior:'smooth',block:'start'});
+    }
+    renderList();
+  });
+
+  /* 더보기 버튼 숨김: 전체 회차가 SHOW_DEFAULT 이하이면 불필요 */
+  if(allKeys.length <= SHOW_DEFAULT) moreBtn.style.display='none';
+
+  renderList();
+  el.appendChild(card);
+}
+
 function renderOfficialStats(el, type){
   // ① 자동 업데이트 카드 최상단
   renderAutoUpdateCard(el, type);
 
-  // ② 통계 카드
+  // ② 최근 당첨번호 카드
+  renderRecentDraws(el, type);
+
+  // ③ 역대 통계 카드
   const card=document.createElement('div');card.className='official-stats-card';
 
   if(type==='lotto'){
@@ -1419,7 +1533,7 @@ function renderOfficialStats(el, type){
       <div class="official-stats-sub">※ 1 ~ ${s.latestRound}회차 누적 데이터 기준 (본번호 집계)</div>
     `;
     if(!s.hasSufficient){
-      card.innerHTML+=`<div style="text-align:center;padding:20px;color:var(--sub);font-size:13px">📡 위 버튼으로 데이터를 불러오면 통계가 표시됩니다</div>`;
+      card.innerHTML+=`<div style="text-align:center;padding:20px;color:var(--sub);font-size:13px">🔄 위 새로고침 버튼으로 데이터를 불러오면 역대 통계가 표시됩니다</div>`;
       el.appendChild(card);return;
     }
     const makeBalls=(arr,isCold)=>{
@@ -1469,7 +1583,7 @@ function renderOfficialStats(el, type){
       <div class="official-stats-sub">※ 1 ~ ${ps.latestRound}회차 누적 데이터 기준</div>
     `;
     if(!ps.hasSufficient){
-      card.innerHTML+=`<div style="text-align:center;padding:20px;color:var(--sub);font-size:13px">📡 위 버튼으로 데이터를 불러오면 통계가 표시됩니다</div>`;
+      card.innerHTML+=`<div style="text-align:center;padding:20px;color:var(--sub);font-size:13px">🔄 위 새로고침 버튼으로 데이터를 불러오면 역대 통계가 표시됩니다</div>`;
       el.appendChild(card);return;
     }
     // 조별
@@ -1724,9 +1838,7 @@ const LOTTO_MID =[2,4,5,8,10,15,18,23,24,29,32,35,36,42,19];
 const LOTTO_COLD=[22,9,21,30,20,28,26,41,33,39,13,31,37,16,44];
 
 /* 캐시에서 로또 가중치 빌드 */
-/* 다기간 복합 가중치 빌드
-   전체빈도 40% + 최근50회 35% + 중기100회 15% + 미출현점수 10%
-   → buildLottoWeights()가 호출될 때마다 실제 데이터로 재계산 */
+/* 다기간 복합 가중치: 전체40%+최근50회35%+중기100회15%+미출현10% */
 function buildLottoWeights(){
   if(_WC.lotto) return _WC.lotto;
   const s=calcLottoStatsFromCache();
@@ -1736,76 +1848,45 @@ function buildLottoWeights(){
     LOTTO_MID.forEach((n,i)=>w[n]=Math.max(1,8-Math.floor(i/2)));
     LOTTO_COLD.forEach(n=>w[n]=1);
     for(let n=1;n<=45;n++) if(!w[n]) w[n]=4;
-    return{weights:w,hot:LOTTO_HOT,mid:LOTTO_MID,cold:LOTTO_COLD,
-           avgSum:138.5,sumStd:26,avgSpan:30,overdue:{},fromCache:false};
+    return(_WC.lotto={weights:w,hot:LOTTO_HOT,mid:LOTTO_MID,cold:LOTTO_COLD,
+      avgSum:138.5,sumStd:26,avgSpan:30,overdue:{},fromCache:false});
   }
-
   const n=s.totalDraws;
-  /* 각 구간 정규화 헬퍼 */
-  const norm=(freq)=>{
-    const vals=Object.values(freq);
-    const mx=Math.max(...vals),mn=Math.min(...vals),rng=mx-mn||1;
-    return Object.fromEntries(Object.entries(freq).map(([k,v])=>[Number(k),(v-mn)/rng]));
-  };
-  const allN=norm(s.allFreq);
-  const recN=norm(s.recentFreq);
-  const midN=norm(s.midFreq);
-
-  /* 미출현(overdue) 점수: 평균 출현 간격 대비 오래 안 나온 번호 */
+  const norm=(freq)=>{const vals=Object.values(freq);const mx=Math.max(...vals),mn=Math.min(...vals),rng=mx-mn||1;return Object.fromEntries(Object.entries(freq).map(([k,v])=>[Number(k),(v-mn)/rng]))};
+  const allN=norm(s.allFreq),recN=norm(s.recentFreq),midN=norm(s.midFreq);
   const overdue={};
   for(let num=1;num<=45;num++){
-    const totalAppear=s.allFreq[num]||1;
-    const expectedGap=n/totalAppear;
-    const drawsSinceLast=n-(s.lastSeen[num]||0);
-    overdue[num]=Math.min(1,drawsSinceLast/Math.max(1,expectedGap*1.5));
+    const expectedGap=n/(s.allFreq[num]||1);
+    const drawsSince=n-(s.lastSeen[num]||0);
+    overdue[num]=Math.min(1,drawsSince/Math.max(1,expectedGap*1.5));
   }
-
-  /* 복합 점수 = 전체40 + 최근35 + 중기15 + 미출현10 */
   const composite={};
   for(let num=1;num<=45;num++){
     const score=0.40*(allN[num]||0)+0.35*(recN[num]||0)+0.15*(midN[num]||0)+0.10*overdue[num];
     composite[num]=Math.max(1,Math.round(1+14*score));
   }
-
-  /* hot/mid/cold: 복합 점수 기준 정렬 */
-  const sortedByComposite=Array.from({length:45},(_,i)=>i+1).sort((a,b)=>composite[b]-composite[a]);
-  _WC.lotto={
-    weights:composite,
-    hot:sortedByComposite.slice(0,15),
-    mid:sortedByComposite.slice(15,30),
-    cold:sortedByComposite.slice(-15),
-    avgSum:s.avgSum,sumStd:s.sumStd||26,avgSpan:s.avgSpan||30,
-    overdue,fromCache:true
-  };
+  const sortedByC=Array.from({length:45},(_,i)=>i+1).sort((a,b)=>composite[b]-composite[a]);
+  _WC.lotto={weights:composite,hot:sortedByC.slice(0,15),mid:sortedByC.slice(15,30),cold:sortedByC.slice(-15),
+    avgSum:s.avgSum,sumStd:s.sumStd||26,avgSpan:s.avgSpan||30,overdue,fromCache:true};
   return _WC.lotto;
 }
 
-/* 연금복권 자리별 다기간 복합 가중치
-   전체빈도 45% + 최근50회 40% + 미출현점수 15% */
+/* 연금복권 자리별 다기간 복합 가중치: 전체45%+최근50회40%+미출현15% */
 function buildPensionWeights(){
   if(_WC.pension) return _WC.pension;
   const ps=calcPensionStatsFromCache();
-  if(!ps.hasSufficient||ps.totalDraws<30){
-    return{posHot:null,posWeights:null,avgSum:27.5,sumStd:7,fromCache:false};
-  }
+  if(!ps.hasSufficient||ps.totalDraws<30)
+    return(_WC.pension={posHot:null,posWeights:null,avgSum:27.5,sumStd:7,fromCache:false});
   const n=ps.totalDraws;
-  const norm=(freq)=>{
-    const vals=Object.values(freq);
-    const mx=Math.max(...vals),mn=Math.min(...vals),rng=mx-mn||1;
-    return Object.fromEntries(Object.entries(freq).map(([k,v])=>[Number(k),(v-mn)/rng]));
-  };
+  const norm=(freq)=>{const vals=Object.values(freq);const mx=Math.max(...vals),mn=Math.min(...vals),rng=mx-mn||1;return Object.fromEntries(Object.entries(freq).map(([k,v])=>[Number(k),(v-mn)/rng]))};
   const posWeights=ps.digitByPos.map((allFreq,pos)=>{
-    const allN=norm(allFreq);
-    const recN=norm(ps.recentDigitByPos[pos]);
-    const lastSeen=ps.lastSeenByPos[pos];
+    const allN=norm(allFreq),recN=norm(ps.recentDigitByPos[pos]),lastSeen=ps.lastSeenByPos[pos];
     const w={};
     for(let d=0;d<10;d++){
-      const totalApp=allFreq[d]||1;
-      const expectedGap=n/totalApp;
+      const expectedGap=n/(allFreq[d]||1);
       const drawsSince=n-(lastSeen[d]||0);
       const overdueScore=Math.min(1,drawsSince/Math.max(1,expectedGap*1.5));
-      const score=0.45*(allN[d]||0)+0.40*(recN[d]||0)+0.15*overdueScore;
-      w[d]=Math.max(1,Math.round(1+9*score));
+      w[d]=Math.max(1,Math.round(1+9*(0.45*(allN[d]||0)+0.40*(recN[d]||0)+0.15*overdueScore)));
     }
     return w;
   });
@@ -1834,17 +1915,14 @@ function weightedSample(pool,weights,n){
 /* ── 로또 5전략 생성 (다기간 복합 가중치 + 동적 합산 기준) ── */
 function generateLottoByStrategy(stratKey){
   const {weights:W,hot,mid,cold,avgSum,sumStd,avgSpan,overdue,fromCache}=buildLottoWeights();
-  const std=sumStd||26, minSpan=Math.round((avgSpan||30)*0.55);
-
-  /* 동적 합산 기준 = 실제 평균 ± 표준편차 배수 */
+  const std=sumStd||26,minSpan=Math.round((avgSpan||30)*0.55);
   const SR={
-    attack:      [Math.round(avgSum+0.4*std), Math.round(avgSum+2.5*std)],
-    semi_attack: [Math.round(avgSum+0.1*std), Math.round(avgSum+1.4*std)],
-    balanced:    [Math.round(avgSum-0.9*std), Math.round(avgSum+0.9*std)],
-    semi_safe:   [Math.round(avgSum-1.4*std), Math.round(avgSum-0.1*std)],
-    safe:        [Math.round(avgSum-2.5*std), Math.round(avgSum-0.4*std)],
+    attack:     [Math.round(avgSum+0.4*std),Math.round(avgSum+2.5*std)],
+    semi_attack:[Math.round(avgSum+0.1*std),Math.round(avgSum+1.4*std)],
+    balanced:   [Math.round(avgSum-0.9*std),Math.round(avgSum+0.9*std)],
+    semi_safe:  [Math.round(avgSum-1.4*std),Math.round(avgSum-0.1*std)],
+    safe:       [Math.round(avgSum-2.5*std),Math.round(avgSum-0.4*std)],
   };
-
   const validate=(arr,key)=>{
     const sum=arr.reduce((a,b)=>a+b,0);
     const odd=arr.filter(n=>n%2===1).length;
@@ -1861,35 +1939,18 @@ function generateLottoByStrategy(stratKey){
     return sum>=lo&&sum<=hi&&low>=3&&high<=1;
   };
 
-  /* 전략별 가중치 변형 */
   const makeW=(base)=>{
     const w={...base};
     if(!fromCache||!overdue) return w;
-    if(stratKey==='attack'){
-      /* 최근 hot + 고구간 2배 편향 */
-      hot.forEach(n=>{w[n]=(w[n]||1)*1.8});
-      for(let n=30;n<=45;n++) w[n]=(w[n]||1)*2.0;
-    }else if(stratKey==='semi_attack'){
-      /* hot + 중상구간 1.5배 */
-      hot.forEach(n=>{w[n]=(w[n]||1)*1.5});
-      for(let n=23;n<=40;n++) w[n]=(w[n]||1)*1.3;
-    }else if(stratKey==='balanced'){
-      /* 복합 가중치 그대로 + overdue 가중 살짝 추가 */
-      for(let n=1;n<=45;n++) w[n]=(w[n]||1)*(1+0.3*(overdue[n]||0));
-    }else if(stratKey==='semi_safe'){
-      /* 저구간 + 미출현 편향 */
-      for(let n=1;n<=22;n++) w[n]=(w[n]||1)*1.4;
-      for(let n=1;n<=45;n++) w[n]=(w[n]||1)*(1+0.5*(overdue[n]||0));
-    }else{
-      /* 안정형: 미출현 + cold 역가중 */
-      cold.forEach(n=>{w[n]=(w[n]||1)*(1+1.5*(overdue[n]||0))});
-      for(let n=1;n<=20;n++) w[n]=(w[n]||1)*1.6;
-    }
+    if(stratKey==='attack'){hot.forEach(n=>{w[n]=(w[n]||1)*1.8});for(let n=30;n<=45;n++)w[n]=(w[n]||1)*2.0}
+    else if(stratKey==='semi_attack'){hot.forEach(n=>{w[n]=(w[n]||1)*1.5});for(let n=23;n<=40;n++)w[n]=(w[n]||1)*1.3}
+    else if(stratKey==='balanced'){for(let n=1;n<=45;n++)w[n]=(w[n]||1)*(1+0.3*(overdue[n]||0))}
+    else if(stratKey==='semi_safe'){for(let n=1;n<=22;n++)w[n]=(w[n]||1)*1.4;for(let n=1;n<=45;n++)w[n]=(w[n]||1)*(1+0.5*(overdue[n]||0))}
+    else{cold.forEach(n=>{w[n]=(w[n]||1)*(1+1.5*(overdue[n]||0))});for(let n=1;n<=20;n++)w[n]=(w[n]||1)*1.6}
     return w;
   };
-
-  let picks=[],attempts=0;
   const allPool=Array.from({length:45},(_,i)=>i+1);
+  let picks=[],attempts=0;
   do{
     if(stratKey==='attack'){
       const w=makeW(W);
@@ -1901,11 +1962,7 @@ function generateLottoByStrategy(stratKey){
       picks=weightedSample(pool.length>=6?pool:allPool,w,6).sort((a,b)=>a-b);
     }else if(stratKey==='balanced'){
       const w=makeW(W);
-      /* 4밴드 균등 배분: 각 밴드서 1개 + 복합가중치로 2개 추가 */
-      const bandPools=[
-        Array.from({length:11},(_,i)=>i+1),Array.from({length:11},(_,i)=>i+12),
-        Array.from({length:11},(_,i)=>i+23),Array.from({length:12},(_,i)=>i+34)
-      ];
+      const bandPools=[Array.from({length:11},(_,i)=>i+1),Array.from({length:11},(_,i)=>i+12),Array.from({length:11},(_,i)=>i+23),Array.from({length:12},(_,i)=>i+34)];
       const base=bandPools.map(b=>weightedSample(b,w,1)[0]);
       const rest=allPool.filter(n=>!base.includes(n));
       picks=[...base,...weightedSample(rest,w,2)].sort((a,b)=>a-b);
@@ -1914,7 +1971,6 @@ function generateLottoByStrategy(stratKey){
       const pool=[...new Set([...mid,...cold,...Array.from({length:32},(_,i)=>i+1)])];
       picks=weightedSample(pool.length>=6?pool:allPool,w,6).sort((a,b)=>a-b);
     }else{
-      /* 안정형: 미출현 높은 번호 + 저구간 위주 */
       const w=makeW(W);
       const dueSorted=allPool.slice().sort((a,b)=>(overdue[b]||0)-(overdue[a]||0));
       const pool=[...new Set([...dueSorted.slice(0,20),...cold,...Array.from({length:20},(_,i)=>i+1)])];
@@ -1923,9 +1979,9 @@ function generateLottoByStrategy(stratKey){
     attempts++;
   }while(!validate(picks,stratKey)&&attempts<300);
 
-  if(picks.length<6||new Set(picks).size<6){
-    const need=allPool.filter(n=>!picks.includes(n));
-    while(picks.length<6&&need.length) picks.push(need.splice(randInt(0,need.length-1),1)[0]);
+  if(picks.length<6){
+    const all=Array.from({length:45},(_,i)=>i+1).filter(n=>!picks.includes(n));
+    while(picks.length<6&&all.length) picks.push(all.splice(randInt(0,all.length-1),1)[0]);
   }
   picks=[...new Set(picks)].sort((a,b)=>a-b).slice(0,6);
   const bonus=picks[randInt(0,picks.length-1)];
@@ -1940,39 +1996,32 @@ function generatePensionByStrategy(stratKey){
   const std=sumStd||7;
   const jo=randInt(1,5);
   let nums,tries=0;
-
-  /* 동적 합산 기준 = 실제 평균 ± 표준편차 배수 */
   const PR={
-    attack:      [Math.round(avgSum+0.7*std), Math.min(54,Math.round(avgSum+3.0*std))],
-    semi_attack: [Math.round(avgSum+0.1*std), Math.round(avgSum+2.0*std)],
-    balanced:    [Math.round(avgSum-1.0*std), Math.round(avgSum+1.0*std)],
-    semi_safe:   [Math.round(avgSum-2.0*std), Math.round(avgSum-0.1*std)],
-    safe:        [Math.max(0,Math.round(avgSum-3.0*std)), Math.round(avgSum-0.7*std)],
+    attack:     [Math.round(avgSum+0.7*std),Math.min(54,Math.round(avgSum+3.0*std))],
+    semi_attack:[Math.round(avgSum+0.1*std),Math.round(avgSum+2.0*std)],
+    balanced:   [Math.round(avgSum-1.0*std),Math.round(avgSum+1.0*std)],
+    semi_safe:  [Math.round(avgSum-2.0*std),Math.round(avgSum-0.1*std)],
+    safe:       [Math.max(0,Math.round(avgSum-3.0*std)),Math.round(avgSum-0.7*std)],
   };
-  const sumOk=(nums,lo,hi)=>{const s=nums.reduce((a,b)=>a+b,0);return s>=lo&&s<=hi};
-
   const biasMap={attack:'high',semi_attack:'high',balanced:null,semi_safe:'low',safe:'low'};
   const bias=biasMap[stratKey]||null;
-  const boostFactor={attack:3.0,semi_attack:2.0,balanced:1.0,semi_safe:2.0,safe:3.0}[stratKey]||1;
-
+  const boost={attack:3.0,semi_attack:2.0,balanced:1.0,semi_safe:2.0,safe:3.0}[stratKey]||1;
   const pickByPos=(pos)=>{
     if(fromCache&&posWeights){
       const w={...posWeights[pos]};
-      if(bias==='high') posHot[pos].slice(0,3).forEach(d=>{w[d]=(w[d]||1)*boostFactor});
-      if(bias==='low')  posHot[pos].slice(-3).forEach(d=>{w[d]=(w[d]||1)*boostFactor});
+      if(bias==='high') posHot[pos].slice(0,3).forEach(d=>{w[d]=(w[d]||1)*boost});
+      if(bias==='low')  posHot[pos].slice(-3).forEach(d=>{w[d]=(w[d]||1)*boost});
       return weightedSample(Array.from({length:10},(_,i)=>i),w,1)[0];
     }
     if(bias==='high') return randInt(5,9);
     if(bias==='low')  return randInt(0,4);
     return randInt(0,9);
   };
-
   const [lo,hi]=PR[stratKey]||[Math.round(avgSum-std),Math.round(avgSum+std)];
-  const fallbackMap={attack:randInt(5,9),semi_attack:randInt(4,8),balanced:randInt(2,7),semi_safe:randInt(1,5),safe:randInt(0,4)};
-  do{nums=Array.from({length:6},(_,i)=>pickByPos(i));tries++}
-  while(!sumOk(nums,lo,hi)&&tries<100);
-  if(tries>=100) nums=Array.from({length:6},()=>fallbackMap[stratKey]??randInt(0,9));
-
+  const sumOk=(nums)=>{const s=nums.reduce((a,b)=>a+b,0);return s>=lo&&s<=hi};
+  const fallback={attack:()=>randInt(5,9),semi_attack:()=>randInt(4,8),balanced:()=>randInt(2,7),semi_safe:()=>randInt(1,5),safe:()=>randInt(0,4)};
+  do{nums=Array.from({length:6},(_,i)=>pickByPos(i));tries++}while(!sumOk(nums)&&tries<100);
+  if(tries>=100) nums=Array.from({length:6},fallback[stratKey]||fallback.balanced);
   return{jo,nums};
 }
 
@@ -2150,13 +2199,13 @@ function getNextDrawTime(dayOfWeek, h, m) {
   let diff = (dayOfWeek - d.getDay() + 7) % 7;
   d.setDate(d.getDate() + diff);
   d.setHours(h, m, 0, 0);
-  if (d <= now) d.setDate(d.getDate() + 7); // 이미 지났으면 다음주
+  if (d.getTime() - now.getTime() <= 1000) d.setDate(d.getDate() + 7);
   return d;
 }
 function updateCountdown(){
   const now = new Date();
-  const lotto  = getNextDrawTime(6, 20, 45); // 토 20:45 KST
-  const pension = getNextDrawTime(4, 19,  5); // 목 19:05 KST
+  const lotto  = getNextDrawTime(6, 20, 45); // 토 20:45
+  const pension = getNextDrawTime(4, 19,  5); // 목 19:05
   const fmt = (diff, dId, hId, mId, sId) => {
     diff = Math.max(0, diff);
     document.getElementById(dId).textContent = String(Math.floor(diff/86400000)).padStart(2,'0');
