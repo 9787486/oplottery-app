@@ -863,7 +863,7 @@ document.querySelectorAll('.bnav-item').forEach(item=>{
     item.classList.add('active');
     document.getElementById('page-'+p).classList.add('active');
     setNavTitleColor(p);
-    if(p==='history'){_histSelectMode=false;_histSelected.clear();syncHistSelectUI();renderHistory()}
+    if(p==='history'){resetHistSelect();renderHistory()}
     if(p==='stats')renderStats();
     if(p==='storage'){purgeExpiredSaved();renderStorage(true)}
     if(p==='lucky'){renderLuckyPick();renderLuckyPension();showPrizeInfo()}
@@ -1056,31 +1056,51 @@ document.getElementById('pension-save-all-btn').addEventListener('click',functio
 let _histSelectMode=false;
 const _histSelected=new Set();
 
+/* 선택 UI 상태를 단일 함수에서 일괄 동기화 */
 function syncHistSelectUI(){
-  const btn=document.getElementById('hist-select-btn');
-  const bulkBtn=document.getElementById('hist-bulk-del-btn');
-  btn.textContent=_histSelectMode?'✕ 취소':'☑ 선택';
-  btn.classList.toggle('danger',_histSelectMode);
-  bulkBtn.style.display=_histSelectMode?'block':'none';
-  if(!_histSelectMode)bulkBtn.textContent='🗑 선택 삭제 (0)';
+  const btn     = document.getElementById('hist-select-btn');
+  const bulkBtn = document.getElementById('hist-bulk-del-btn');
+  const cnt     = _histSelected.size;
+
+  if(_histSelectMode){
+    btn.textContent = cnt > 0 ? `✕ 취소 (${cnt})` : '✕ 취소';
+    btn.classList.add('danger');
+    bulkBtn.style.display   = 'block';
+    bulkBtn.textContent     = `🗑 선택 삭제 (${cnt})`;
+    bulkBtn.disabled        = cnt === 0;
+    bulkBtn.style.opacity   = cnt === 0 ? '0.45' : '1';
+  } else {
+    btn.textContent = '☑ 선택';
+    btn.classList.remove('danger');
+    bulkBtn.style.display = 'none';
+    bulkBtn.textContent   = '🗑 선택 삭제 (0)';
+    bulkBtn.disabled      = false;
+  }
+}
+
+/* 선택 모드 리셋 — 중복 패턴을 단일 함수로 통합 */
+function resetHistSelect(){
+  _histSelectMode = false;
+  _histSelected.clear();
+  syncHistSelectUI();
 }
 
 document.getElementById('hist-select-btn').addEventListener('click',()=>{
-  _histSelectMode=!_histSelectMode;
+  _histSelectMode = !_histSelectMode;
   _histSelected.clear();
   syncHistSelectUI();
   renderHistory();
 });
 
 document.getElementById('hist-bulk-del-btn').addEventListener('click',function(){
-  const count=_histSelected.size;
-  if(!count){showToast('선택된 항목이 없습니다');return}
-  const ids=[..._histSelected];
-  const h=loadHistory().filter(item=>!ids.includes(item.id));
-  saveHistory(h);_histSelected.clear();
-  _histSelectMode=false;syncHistSelectUI();
-  renderHistory();updateNavDots();
-  showToast(`🗑 ${count}개 항목 삭제됨`);vibrate(30);
+  const count = _histSelected.size;
+  if(!count){ showToast('선택된 항목이 없습니다'); return; }
+  const ids = [..._histSelected];
+  const h   = loadHistory().filter(item => !ids.includes(item.id));
+  saveHistory(h);
+  resetHistSelect();          /* 중복 패턴 → resetHistSelect() */
+  renderHistory(); updateNavDots();
+  showToast(`🗑 ${count}개 항목 삭제됨`); vibrate(30);
 });
 
 function renderHistory(){
@@ -1119,7 +1139,7 @@ function renderHistory(){
           else _histSelected.add(item.id);
           card.classList.toggle('hist-selected',_histSelected.has(item.id));
           chk.classList.toggle('checked',_histSelected.has(item.id));
-          document.getElementById('hist-bulk-del-btn').textContent=`🗑 선택 삭제 (${_histSelected.size})`;
+          syncHistSelectUI(); /* 카운트·버튼 상태 중앙 동기화 */
         });
       }else{
         // Per-item delete button
