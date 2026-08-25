@@ -1,4 +1,4 @@
-const CACHE = 'onepiece-lotto-v14';
+const CACHE = 'onepiece-lotto-v15';
 const ASSETS = [
   './',
   './index.html',
